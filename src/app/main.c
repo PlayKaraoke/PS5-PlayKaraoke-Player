@@ -1118,9 +1118,15 @@ static void play_current(app_t *a) {
 
 /* ---------- Principal ---------- */
 
+int sceUserServiceInitialize(void *params);
+
 int main(void) {
   printf("[app] iniciando\n");
   i18n_load();
+  /* Serviço de usuário do PS5: sem ele, o navegador que abre os vídeos do
+   * YouTube fica sem usuário (sceUserServiceGetInitialUser 0x80960006). */
+  int us = sceUserServiceInitialize(NULL);
+  if (us) printf("[app] sceUserServiceInitialize: 0x%08x\n", (unsigned)us);
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
     printf("[app] SDL_Init falhou: %s\n", SDL_GetError());
