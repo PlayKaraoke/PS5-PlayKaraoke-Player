@@ -14,21 +14,32 @@
   .msg p { font-size: 3vh; color: #ddd6ea; margin: 0 0 1.5vh; }
   .msg .o { color: #ff666e; font-weight: bold; }
   .hidden { display: none; }
+  #start { cursor: pointer; background: rgba(15, 12, 23, .78); }
+  #start .play { width: 16vh; height: 16vh; border-radius: 50%; background: #b000e0; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 4vh; box-shadow: 0 0 0 1.2vh rgba(176, 0, 224, .3); }
+  #start .play::after { content: ''; border-left: 5vh solid #fff; border-top: 3vh solid transparent;
+    border-bottom: 3vh solid transparent; margin-left: 1.2vh; }
+  #start .x { color: #7cb2e8; font-weight: bold; }
 </style>
 </head>
 <body>
 <!-- O player do YouTube é embutido nesta página (servida pelo PS5) porque o
      YouTube recusa o player aberto sem uma página de origem (erro 153). -->
 <div id="player"></div>
+<!-- Os navegadores só deixam o vídeo começar sozinho sem som: um toque (✕
+     no PS5) libera o som. A tela inteira é o botão. -->
+<div id="start" class="msg"><div class="play"></div><h1 data-t="start"></h1><p data-t="startHint"></p></div>
 <div id="ended" class="msg hidden"><h1 data-t="ended"></h1><p data-t="back"></p></div>
 <div id="error" class="msg hidden"><h1 data-t="error"></h1><p data-t="errorHint"></p><p data-t="back"></p></div>
 
 <script>
 'use strict';
 const T = {
-  en: { ended: 'Song finished!', back: 'Press ○ to close the browser and go back to PlayKaraoke.',
+  en: { start: 'Press ✕ to start', startHint: 'The song plays with sound after you press it.',
+        ended: 'Song finished!', back: 'Press ○ to close the browser and go back to PlayKaraoke.',
         error: "This video can't be played here.", errorHint: 'The channel blocked playback outside YouTube. Pick another video.' },
-  pt: { ended: 'Música terminou!', back: 'Aperte ○ para fechar o navegador e voltar ao PlayKaraoke.',
+  pt: { start: 'Aperte ✕ para começar', startHint: 'A música toca com som depois do toque.',
+        ended: 'Música terminou!', back: 'Aperte ○ para fechar o navegador e voltar ao PlayKaraoke.',
         error: 'Este vídeo não pode tocar aqui.', errorHint: 'O canal bloqueou a reprodução fora do YouTube. Escolha outro vídeo.' },
 };
 const videoId = new URLSearchParams(location.search).get('v') || '';
@@ -42,13 +53,29 @@ fetch('/api/state', { cache: 'no-store' }).then((r) => r.json())
 
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 
+let player = null;
+let ready = false;
+
+/* O play tem que acontecer dentro do toque (senão o navegador deixa mudo):
+ * antes de o player ficar pronto, o toque não faz nada. */
+function startWithSound() {
+  if (!ready) return;
+  document.getElementById('start').classList.add('hidden');
+  player.unMute();
+  player.setVolume(100);
+  player.playVideo();
+}
+document.getElementById('start').addEventListener('click', startWithSound);
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') startWithSound(); });
+
 /* API do player do YouTube: avisa quando o vídeo acaba ou dá erro. */
 window.onYouTubeIframeAPIReady = () => {
-  new YT.Player('player', {
+  player = new YT.Player('player', {
     videoId,
     width: '100%', height: '100%',
-    playerVars: { autoplay: 1, rel: 0, fs: 1, playsinline: 1, origin: location.origin },
+    playerVars: { autoplay: 0, rel: 0, fs: 1, playsinline: 1, origin: location.origin },
     events: {
+      onReady: () => { ready = true; },
       onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) show('ended'); },
       onError: () => show('error'),
     },
