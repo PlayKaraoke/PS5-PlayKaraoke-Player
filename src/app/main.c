@@ -43,6 +43,7 @@
 #include "queue.h"
 #include "queue_view.h"
 #include "server.h"
+#include "thumbs.h"
 #include "ui.h"
 #include "../../vendor/qrcodegen/qrcodegen.h"
 
@@ -114,6 +115,7 @@ typedef struct app {
   int result_library_count; /* tamanho da biblioteca na última busca */
   int online;               /* busca no YouTube (L1) em vez do HD */
   online_result_t online_results[ONLINE_MAX_RESULTS];
+  thumbs_t thumbs;          /* miniaturas dos vídeos (baixadas aos poucos) */
   char online_error[256];
 
   /* teclado do PS5 (IME): o texto chega em SDL_TEXTINPUT e o OK em Return;
@@ -598,6 +600,7 @@ static void run_search(app_t *a) {
     a->result_count = a->result_total = n < 0 ? 0 : n;
     for (int i = 0; i < a->result_count; i++)
       snprintf(a->results[i], sizeof a->results[i], ONLINE_PREFIX "%s", a->online_results[i].video_id);
+    thumbs_load(&a->thumbs, a->online_results, a->result_count);
   } else if (a->query[0]) {
     a->result_count = library_search(&a->library, a->query, a->filter, a->results, LIBRARY_MAX_RESULTS,
                                      &a->result_total);
@@ -874,9 +877,13 @@ static void draw_search(app_t *a) {
       draw_song_row(a, y, a->results[i], i == a->result_sel);
       continue;
     }
-    /* YouTube: "Artista – Música" (do título do vídeo) e o canal. */
+    /* YouTube: miniatura, "Artista – Música" (do título do vídeo) e o canal. */
     if (i == a->result_sel) draw_selection(ui, y);
     draw_checkbox(ui, 102, y + 12, in_queue(a, a->results[i]));
+    SDL_Surface *thumb = thumbs_get(&a->thumbs, i);
+    SDL_Rect tr = {150, y + 1, THUMB_W, THUMB_H};
+    if (thumb) SDL_BlitSurface(thumb, NULL, ui->screen, &tr);
+    else ui_box(ui, tr.x, tr.y, tr.w, tr.h, 6, UI_PANEL, 255);
     songinfo_t info;
     online_song_info(a->online_results[i].title, &info);
     char line[600];
@@ -884,7 +891,7 @@ static void draw_search(app_t *a) {
     int right = UI_W - 100;
     right -= ui_text(ui, FONT_SMALL, "YouTube", right, y + 14, 0xFF4E45, ALIGN_RIGHT, 0) + 24;
     right -= ui_text(ui, FONT_SMALL, a->online_results[i].channel, right, y + 14, UI_TEXT_3, ALIGN_RIGHT, 420) + 24;
-    ui_text(ui, FONT_BODY, line, 160, y + 8, UI_TEXT, ALIGN_LEFT, right - 160);
+    ui_text(ui, FONT_BODY, line, 270, y + 8, UI_TEXT, ALIGN_LEFT, right - 270);
   }
   if (a->result_total > a->result_count) {
     char more[96];
@@ -1114,7 +1121,6 @@ static void play_current(app_t *a) {
 int main(void) {
   printf("[app] iniciando\n");
   i18n_load();
-  online_init();
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
     printf("[app] SDL_Init falhou: %s\n", SDL_GetError());
@@ -1138,6 +1144,7 @@ int main(void) {
   queue_init(&a->queue);
   browser_init(&a->browser);
   library_init(&a->library);
+  thumbs_init(&a->thumbs);
   a->results = calloc(LIBRARY_MAX_RESULTS, sizeof *a->results);
   if (!a->results) return 1;
   /* Índice salvo vale na hora; a varredura atualiza em segundo plano. */
@@ -1156,7 +1163,9 @@ int main(void) {
   a->qr_ok = qrcodegen_encodeText(a->url, qr_temp, a->qr, qrcodegen_Ecc_MEDIUM, qrcodegen_VERSION_MIN,
                                   qrcodegen_VERSION_MAX, qrcodegen_Mask_AUTO, true);
   if (a->state_json)
-    a->server = server_start(SERVER_PORT, &a->library, www_index_html, www_index_html_size, wake_main, a);
+    a->server = server_start(SERVER_PORT, &a->library, www_index_html, www_index_html_size, www_yt_html,
+                             www_yt_html_size, wake_main, a);
+  online_init(a->url);
   printf("[app] celulares: %s (%s)\n", a->url, a->server ? "servidor ok" : "servidor falhou");
 
   Uint32 last_draw = 0;
@@ -1182,6 +1191,7 @@ int main(void) {
     state_t before = a->state;
     service_phones(a, NULL);
     if (a->queue.version != version || a->state != before) dirty = 1;
+    if (thumbs_take_changed(&a->thumbs) && a->state == ST_SEARCH && a->online) dirty = 1;
 
     /* Teclado do PS5 fechado sem OK = cancelado. */
     if (a->ime_active) {

@@ -30,8 +30,11 @@ __asm__(".section .rodata\n"
 extern const char online_cacert[];
 extern const unsigned long online_cacert_size;
 
-void online_init(void) {
+static char g_base_url[128];
+
+void online_init(const char *base_url) {
   curl_global_init(CURL_GLOBAL_DEFAULT);
+  snprintf(g_base_url, sizeof g_base_url, "%s", base_url);
 }
 
 /* ---------- JSON mínimo (só o formato do Worker) ---------- */
@@ -130,13 +133,13 @@ static const char *object_end(const char *p) {
 
 typedef struct body {
   char *data;
-  size_t size;
+  size_t size, max;
 } body_t;
 
 static size_t on_data(char *ptr, size_t size, size_t n, void *user) {
   body_t *b = user;
   size_t len = size * n;
-  if (b->size + len >= MAX_BODY) return 0;
+  if (b->size + len >= b->max) return 0;
   memcpy(b->data + b->size, ptr, len);
   b->size += len;
   b->data[b->size] = '\0';
@@ -146,7 +149,7 @@ static size_t on_data(char *ptr, size_t size, size_t n, void *user) {
 int online_search(const char *query, online_result_t *out, int max, char *error, size_t error_size) {
   error[0] = '\0';
   CURL *curl = curl_easy_init();
-  body_t body = {malloc(MAX_BODY), 0};
+  body_t body = {malloc(MAX_BODY), 0, MAX_BODY};
   if (!curl || !body.data) {
     snprintf(error, error_size, "%s", TR("Online search is unavailable.", "Busca online indisponível."));
     free(body.data);
@@ -200,6 +203,7 @@ int online_search(const char *query, online_result_t *out, int max, char *error,
       object_string(p, end, "videoId", r->video_id, sizeof r->video_id);
       object_string(p, end, "title", r->title, sizeof r->title);
       object_string(p, end, "channel", r->channel, sizeof r->channel);
+      object_string(p, end, "thumbnail", r->thumb, sizeof r->thumb);
       char path[48];
       snprintf(path, sizeof path, ONLINE_PREFIX "%s", r->video_id);
       if (online_is_path(path) && r->title[0]) found++;
@@ -208,6 +212,37 @@ int online_search(const char *query, online_result_t *out, int max, char *error,
   }
   free(body.data);
   return found;
+}
+
+int online_fetch(const char *url, unsigned char **data, size_t *size, size_t max_size) {
+  *data = NULL;
+  *size = 0;
+  if (strncmp(url, "https://", 8) != 0) return -1;
+  CURL *curl = curl_easy_init();
+  body_t body = {malloc(max_size + 1), 0, max_size + 1};
+  if (!curl || !body.data) {
+    free(body.data);
+    if (curl) curl_easy_cleanup(curl);
+    return -1;
+  }
+  struct curl_blob ca = {(void *)online_cacert, online_cacert_size, CURL_BLOB_NOCOPY};
+  curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &ca);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, on_data);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+  CURLcode rc = curl_easy_perform(curl);
+  long status = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+  curl_easy_cleanup(curl);
+  if (rc != CURLE_OK || status != 200 || body.size == 0) {
+    free(body.data);
+    return -1;
+  }
+  *data = (unsigned char *)body.data;
+  *size = body.size;
+  return 0;
 }
 
 /* ---------- Fila e reprodução ---------- */
@@ -276,6 +311,5 @@ void online_song_info(const char *video_title, songinfo_t *out) {
 }
 
 void online_watch_url(const char *path, char *out, size_t size) {
-  /* Player do YouTube em tela cheia (embed), como no web player. */
-  snprintf(out, size, "https://www.youtube.com/embed/%s?autoplay=1&rel=0&fs=1", path + strlen(ONLINE_PREFIX));
+  snprintf(out, size, "%s/yt?v=%s", g_base_url, path + strlen(ONLINE_PREFIX));
 }

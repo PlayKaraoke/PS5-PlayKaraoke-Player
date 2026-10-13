@@ -24,3 +24,4 @@ EMBED(font_inter_semibold, ASSET_DIR "/fonts/Inter-SemiBold.ttf");
 EMBED(font_montserrat_bold, ASSET_DIR "/fonts/Montserrat-Bold.ttf");
 EMBED(logo_png, ASSET_DIR "/logo.png");
 EMBED(www_index_html, WWW_DIR "/index.html");
+EMBED(www_yt_html, WWW_DIR "/yt.html");

@@ -41,6 +41,7 @@
   .item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
   .item:last-child { border-bottom: 0; }
   .item .info { flex: 1; min-width: 0; }
+  .item .thumb { width: 80px; height: 45px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--panel-2); }
   .item .t { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item .a { color: var(--text-2); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tag { font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
@@ -410,6 +411,13 @@ async function search() {
       const tag = document.createElement('span');
       tag.className = 'tag';
       tag.textContent = song.format;
+      if (song.thumb) {
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        img.src = song.thumb;
+        img.alt = '';
+        li.append(img);
+      }
       li.append(info, tag);
       li.onclick = () => confirmSong(song);
       list.append(li);

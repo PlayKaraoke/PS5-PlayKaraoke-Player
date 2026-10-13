@@ -23,8 +23,8 @@
 struct server {
   struct MHD_Daemon *daemon;
   library_t *lib;
-  const uint8_t *page;
-  size_t page_size;
+  const uint8_t *page, *yt_page;
+  size_t page_size, yt_page_size;
   void (*wake)(void *ctx);
   void *wake_ctx;
 
@@ -126,6 +126,8 @@ static enum MHD_Result handle_online_search(struct MHD_Connection *conn, const c
     json_append_string(json, size, info.title);
     strncat(json, ",\"code\":", size - strlen(json) - 1);
     json_append_string(json, size, results[i].channel);
+    strncat(json, ",\"thumb\":", size - strlen(json) - 1);
+    json_append_string(json, size, results[i].thumb);
     strncat(json, ",\"format\":\"YouTube\"}", size - strlen(json) - 1);
   }
   strncat(json, "]}", size - strlen(json) - 1);
@@ -273,6 +275,8 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
   int is_get = strcmp(method, "GET") == 0, is_post = strcmp(method, "POST") == 0;
   if (is_get && (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0))
     return reply(conn, 200, "text/html; charset=utf-8", s->page, s->page_size, MHD_RESPMEM_PERSISTENT);
+  if (is_get && strcmp(url, "/yt") == 0)
+    return reply(conn, 200, "text/html; charset=utf-8", s->yt_page, s->yt_page_size, MHD_RESPMEM_PERSISTENT);
   if (is_get && strcmp(url, "/api/state") == 0) return handle_state(s, conn);
   if (is_get && strcmp(url, "/api/search") == 0) return handle_search(s, conn);
   if (is_post && strcmp(url, "/api/queue") == 0) return handle_command(s, conn, CMD_ADD);
@@ -294,12 +298,14 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
 /* ---------- Ciclo de vida ---------- */
 
 server_t *server_start(int port, library_t *lib, const uint8_t *page, size_t page_size,
-                       void (*wake)(void *ctx), void *wake_ctx) {
+                       const uint8_t *yt_page, size_t yt_page_size, void (*wake)(void *ctx), void *wake_ctx) {
   server_t *s = calloc(1, sizeof *s);
   if (!s) return NULL;
   s->lib = lib;
   s->page = page;
   s->page_size = page_size;
+  s->yt_page = yt_page;
+  s->yt_page_size = yt_page_size;
   s->wake = wake;
   s->wake_ctx = wake_ctx;
   pthread_mutex_init(&s->lock, NULL);

@@ -18,10 +18,16 @@ typedef struct online_result {
   char video_id[32];
   char title[256];   /* título do vídeo como veio do YouTube */
   char channel[128];
+  char thumb[256];   /* miniatura (https://i.ytimg.com/...) */
 } online_result_t;
 
-/* Chamar uma vez no início do app. */
-void online_init(void);
+/* Chamar uma vez no início do app. `base_url` é o endereço do servidor do
+ * PS5 (http://IP:porta), que serve a página do player (/yt). */
+void online_init(const char *base_url);
+
+/* Baixa um arquivo por HTTPS (ex.: miniatura). Devolve 0 e o conteúdo em
+ * *data (liberar com free). */
+int online_fetch(const char *url, unsigned char **data, size_t *size, size_t max_size);
 
 /* Busca (bloqueia ~1 s; pode ser chamada de qualquer thread). Devolve o
  * número de resultados, ou -1 com a mensagem em `error`. */
@@ -34,5 +40,7 @@ int online_is_path(const char *path);
  * player: tira "karaoke version" e separa por " - ", " | "...). */
 void online_song_info(const char *video_title, songinfo_t *out);
 
-/* Endereço para abrir o vídeo no navegador. */
+/* Endereço para abrir o vídeo no navegador: a página /yt do próprio PS5,
+ * que embute o player oficial (o YouTube recusa o player aberto sem uma
+ * página de origem: erro 153). */
 void online_watch_url(const char *path, char *out, size_t size);

@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>PlayKaraoke · YouTube</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
+  #player { position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; }
+  .msg { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(15, 12, 23, .94); text-align: center; padding: 6vh 8vw; }
+  .msg h1 { font-size: 6vh; margin: 0 0 2vh; }
+  .msg p { font-size: 3vh; color: #ddd6ea; margin: 0 0 1.5vh; }
+  .msg .o { color: #ff666e; font-weight: bold; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<!-- O player do YouTube é embutido nesta página (servida pelo PS5) porque o
+     YouTube recusa o player aberto sem uma página de origem (erro 153). -->
+<div id="player"></div>
+<div id="ended" class="msg hidden"><h1 data-t="ended"></h1><p data-t="back"></p></div>
+<div id="error" class="msg hidden"><h1 data-t="error"></h1><p data-t="errorHint"></p><p data-t="back"></p></div>
+
+<script>
+'use strict';
+const T = {
+  en: { ended: 'Song finished!', back: 'Press ○ to close the browser and go back to PlayKaraoke.',
+        error: "This video can't be played here.", errorHint: 'The channel blocked playback outside YouTube. Pick another video.' },
+  pt: { ended: 'Música terminou!', back: 'Aperte ○ para fechar o navegador e voltar ao PlayKaraoke.',
+        error: 'Este vídeo não pode tocar aqui.', errorHint: 'O canal bloqueou a reprodução fora do YouTube. Escolha outro vídeo.' },
+};
+const videoId = new URLSearchParams(location.search).get('v') || '';
+let lang = 'en';
+
+function applyLang() {
+  document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = T[lang][el.dataset.t]; });
+}
+fetch('/api/state', { cache: 'no-store' }).then((r) => r.json())
+  .then((s) => { if (s.lang === 'pt') lang = 'pt'; applyLang(); }).catch(applyLang);
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+
+/* API do player do YouTube: avisa quando o vídeo acaba ou dá erro. */
+window.onYouTubeIframeAPIReady = () => {
+  new YT.Player('player', {
+    videoId,
+    width: '100%', height: '100%',
+    playerVars: { autoplay: 1, rel: 0, fs: 1, playsinline: 1, origin: location.origin },
+    events: {
+      onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) show('ended'); },
+      onError: () => show('error'),
+    },
+  });
+};
+const api = document.createElement('script');
+api.src = 'https://www.youtube.com/iframe_api';
+api.onerror = () => show('error');
+document.head.append(api);
+</script>
+</body>
+</html>
