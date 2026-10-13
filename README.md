@@ -19,6 +19,10 @@
   <img src="docs/screenshots/tv-playing.png" alt="CDG karaoke playing" width="49%"/>
 </p>
 
+> 💾 **Your songs must be on an external drive.** In this version, PlayKaraoke only finds songs on a
+> **USB hard drive or pen drive** plugged into the PS5 (formatted as **exFAT** or FAT32). Songs on the
+> PS5 internal storage are not listed.
+
 > 🎵 **No music included.** This project is only a player. It does not include, distribute or point to
 > karaoke files, artist names or songs. Only use files you have the right to use.
 
@@ -54,8 +58,9 @@
 
 - A jailbroken PS5 with an ELF loader (**elfldr**, port 9021). **Tested on firmware 13.60.** Earlier
   firmwares that run elfldr should work but are untested.
-- An external drive with your karaoke files, formatted as **exFAT** (or FAT32). NTFS and APFS are not
-  supported by the PS5.
+- **A USB hard drive or pen drive with your karaoke files**, formatted as **exFAT** (or FAT32). This is
+  where PlayKaraoke looks for songs; NTFS and APFS drives are not supported by the PS5. Any folder layout
+  works: the whole drive is scanned.
 - Phones on the same Wi-Fi network as the PS5 (optional).
 
 ## Installation
@@ -72,7 +77,7 @@ When the app opens, the PS5 web browser also shows a quick guide on top of it: p
 
 ## How to use
 
-1. Connect the drive **before** opening the app. The first time, PlayKaraoke reads the drive in the
+1. Plug the USB drive with your songs **before** opening the app. The first time, PlayKaraoke reads the drive in the
    background and builds the library (it is updated every time the app opens).
 2. On the home screen, guests scan the **QR code** to request songs from their phones. You can also
    search with the controller (**△**).
@@ -140,7 +145,7 @@ MP4s with made-up lyrics and synthesized music). Needs Python 3 with Pillow and 
 python3 tools/make-demo-songs.py demo-songs
 ```
 
-Copy them to your drive (or to `/data/playkaraoke/test` on the PS5) and open the app.
+Copy them to your USB drive and open the app.
 
 ## Building
 
