@@ -1,0 +1,19 @@
+# Compilados
+build/
+
+# Projetos de referência (cada um tem seu próprio repositório)
+ref/
+
+# Músicas de teste (conteúdo da PlayKaraoke, não é distribuído aqui)
+assets/test/
+
+# Configurações locais
+.claude/
+.DS_Store
+
+# Documentos de planejamento ficam só no computador (no GitHub, só o README)
+*.md
+!README.md
+
+# Versões públicas (vão para o GitHub Releases)
+dist/

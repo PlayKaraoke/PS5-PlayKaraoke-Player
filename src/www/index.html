@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0c17">
+<title>PlayKaraoke</title>
+<style>
+  :root {
+    --bg: #0f0c17; --panel: #1c1726; --panel-2: #2e2340; --line: #2a2436;
+    --text: #fff; --text-2: #b4adc2; --text-3: #7d7590;
+    --brand: #b000e0; --brand-2: #5a12f0; --danger: #ff5c7a; --ok: #3ddc97;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 10px; }
+  .logo svg { display: block; height: 38px; width: auto; }
+  .welcome .logo svg { height: 92px; margin: 0 auto; }
+  .who { color: var(--text-2); font-size: 14px; background: none; border: 0; padding: 6px 0; }
+  .who b { color: var(--text); }
+  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin: 22px 0 10px; }
+  .card { background: var(--panel); border-radius: 18px; padding: 16px; }
+  .hidden { display: none !important; }
+  input[type=search], input[type=text] { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text); outline: none; }
+  input:focus { border-color: var(--brand); }
+  .row-search { display: flex; gap: 8px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .btn { border: 0; border-radius: 14px; padding: 14px 18px; font-weight: 700; font-size: 16px;
+    background: var(--brand); color: #fff; }
+  .btn.ghost { background: var(--panel-2); }
+  .btn.danger { background: var(--danger); }
+  .btn:disabled { opacity: .5; }
+  .chips { display: flex; gap: 8px; margin: 12px 0 4px; }
+  .chip { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 7px 14px; font-size: 14px;
+    color: var(--text-2); }
+  .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: 0; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .t { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .a { color: var(--text-2); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag { font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+    background: var(--panel-2); color: var(--text-2); flex-shrink: 0; }
+  .tag.mine { background: var(--brand); color: #fff; }
+  .muted { color: var(--text-3); font-size: 14px; }
+  .big { font-size: 26px; font-weight: 800; margin: 4px 0; }
+  .hero { background: linear-gradient(135deg, var(--brand-2), var(--brand)); border-radius: 22px; padding: 20px; }
+  .hero .muted { color: #f1dcff; }
+  .pitch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  .pitch .val { font-size: 22px; font-weight: 800; min-width: 92px; text-align: center; }
+  .pitch button { width: 64px; height: 56px; border-radius: 16px; border: 0; background: rgba(255,255,255,.18);
+    font-size: 28px; font-weight: 800; color: #fff; }
+  .mini { border: 0; background: var(--panel-2); border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+  .mini.x { color: var(--danger); }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: rgba(15,12,23,.96);
+    border-top: 1px solid var(--line); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); gap: 8px; }
+  .tabs button { flex: 1; border: 0; background: none; padding: 12px 6px; border-radius: 14px; font-weight: 700;
+    color: var(--text-3); font-size: 15px; }
+  .tabs button.on { background: var(--panel-2); color: #fff; }
+  .badge { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--brand);
+    color: #fff; font-size: 12px; margin-left: 4px; }
+  .toast { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom));
+    background: var(--panel-2); border-radius: 14px; padding: 14px 16px; font-weight: 600; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: opacity .2s; }
+  .toast.err { background: var(--danger); }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; }
+  .sheet { width: 100%; background: var(--panel); border-radius: 22px 22px 0 0; padding: 22px 18px
+    calc(22px + env(safe-area-inset-bottom)); }
+  .sheet .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .sheet .actions .btn { flex: 1; }
+  .center { text-align: center; }
+  .welcome { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  .langs { display: flex; gap: 6px; }
+  .langs button { border: 2px solid transparent; background: var(--panel); border-radius: 10px; font-size: 20px;
+    line-height: 1; padding: 5px 7px; }
+  .langs button.on { border-color: var(--brand); }
+  .welcome .langs { justify-content: center; }
+  .offline { background: var(--danger); color: #fff; border-radius: 12px; padding: 10px 14px; font-size: 14px;
+    margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- Entrada: nome (uma vez, guardado no celular) -->
+<section id="welcome" class="welcome hidden">
+  <div class="langs"><button data-lang="en" aria-label="English">🇺🇸</button><button data-lang="pt" aria-label="Português">🇧🇷</button></div>
+  <div class="logo" role="img" aria-label="PlayKaraoke"></div>
+  <p class="center muted" data-i18n="tagline"></p>
+  <input id="name-input" type="text" maxlength="40" data-i18n-ph="namePh" autocomplete="nickname">
+  <button id="name-ok" class="btn" data-i18n="enter"></button>
+</section>
+
+<main id="app" class="hidden">
+  <header>
+    <div class="logo" role="img" aria-label="PlayKaraoke"></div>
+    <div class="langs"><button data-lang="en" aria-label="English">🇺🇸</button><button data-lang="pt" aria-label="Português">🇧🇷</button></div>
+  </header>
+  <button id="who" class="who"></button>
+  <div id="offline" class="offline hidden" data-i18n="offline"></div>
+
+  <!-- Sua vez de cantar -->
+  <section id="singing" class="hero hidden">
+    <div class="muted" data-i18n="yourTurnNow"></div>
+    <div id="singing-title" class="big"></div>
+    <div id="singing-artist" class="muted"></div>
+    <div class="pitch">
+      <button data-pitch="-1" aria-label="Baixar o tom">−</button>
+      <div><div class="muted center" data-i18n="key"></div><div id="singing-pitch" class="val"></div></div>
+      <button data-pitch="1" aria-label="Subir o tom">+</button>
+    </div>
+    <div class="pitch">
+      <button id="pitch-reset" class="btn ghost" style="flex:1;width:auto;font-size:16px" data-i18n="keyOriginal"></button>
+      <button id="finish" class="btn danger" style="flex:1;width:auto;font-size:16px" data-i18n="finish"></button>
+    </div>
+  </section>
+
+  <!-- Aba: buscar -->
+  <section id="tab-search">
+    <h2 data-i18n="searchTitle"></h2>
+    <form id="search-form" class="row-search">
+      <input id="q" type="search" data-i18n-ph="searchPh" enterkeyhint="search" autocomplete="off">
+      <button class="btn" data-i18n="searchBtn"></button>
+    </form>
+    <div class="chips">
+      <button class="chip on" data-filter="0" data-i18n="fAll"></button>
+      <button class="chip" data-filter="1" data-i18n="fCdg"></button>
+      <button class="chip" data-filter="2" data-i18n="fMp4"></button>
+    </div>
+    <p id="search-msg" class="muted"></p>
+    <ul id="results" class="list"></ul>
+  </section>
+
+  <!-- Aba: minha vez -->
+  <section id="tab-mine" class="hidden">
+    <div id="turn" class="card" style="margin-top:16px"></div>
+    <h2 data-i18n="mySongs"></h2>
+    <ul id="mine" class="list card"></ul>
+    <h2 data-i18n="rotation"></h2>
+    <ul id="rotation" class="list card"></ul>
+  </section>
+
+  <nav class="tabs">
+    <button id="tab-btn-search" class="on"><span data-i18n="tabSearch"></span></button>
+    <button id="tab-btn-mine"><span data-i18n="tabMine"></span> <span id="mine-count" class="badge hidden"></span></button>
+  </nav>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<div id="sheet" class="sheet-bg hidden"><div class="sheet">
+  <div class="muted" data-i18n="confirmAsk"></div>
+  <div id="sheet-title" class="big"></div>
+  <div id="sheet-artist" class="muted"></div>
+  <div class="actions">
+    <button id="sheet-cancel" class="btn ghost" data-i18n="cancel"></button>
+    <button id="sheet-ok" class="btn" data-i18n="request"></button>
+  </div>
+</div></div>
+
+<template id="logo-svg"><svg data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 422.21 143.19">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <g data-name="Layer 1">
+    <g>
+      <path class="cls-1" d="M11.96,5.03C17.71.88,25.12-.71,32.1.29c6.43.92,12.45,3.92,17.43,8.06,4.62-1.06,9.22,3.46,8.71,8.05-.08.85-.44,1.64-.82,2.39.33,1.11.7,2.21,1.02,3.32,2.39-5.58,7.8-10.02,13.99-10.32,44.39-.77,88.79-1.53,133.17-2.75,2.39-.06,4.88.19,7,1.38,2.89,1.72,4.87,4.72,5.61,7.97.69,2.82.64,5.77.23,8.62-1.91,16.51-3.4,33.07-5.57,49.55-.32,2.58-.76,5.14-.87,7.74-.05,1.26.2,2.69,1.25,3.51,6.81,5.24,11.61,13,13.29,21.42.77,5.28-.53,10.74-3.22,15.31-1.59,2.74-3.71,5.12-6.06,7.22-3.76,3.16-8.44,5.05-13.17,6.2-4.97,1.11-10.11,1.45-15.19,1.13-7.49-.68-14.93-2.25-21.92-5.04-6.83-2.81-14.66-2.01-21.42.59-2.77,1.89-5.61,3.72-8.68,5.09-4.96,2.28-10.42,3.71-15.91,3.4-2.99-.16-5.95-.89-8.64-2.2-2.16-1-3.98-2.57-5.94-3.9-2.4,1.78-5.01,4.16-8.25,3.48,3.44-3.84,7.59-6.94,11.79-9.9,2.17-1.48,4.25-3.07,6.45-4.49.12,1.39-.22,2.83-1.17,3.87-1.36,1.58-3.25,2.54-4.84,3.86,2.3,2.22,5.36,3.34,8.3,4.4,4.09.53,8.32.1,12.23-1.24,2.22-.83,4.45-1.66,6.5-2.87,3.48-1.96,6.78-4.41,10.69-5.46,1.82-.42,3.61-.97,5.47-1.19,2.87-.36,5.8-.27,8.66.24,2.46.38,4.63,1.7,7.04,2.27,2.65.56,5.08,1.84,7.68,2.55,2.22.31,4.43.74,6.6,1.28,3.97.54,7.99.76,11.99.6,5.31-.27,10.75-1.23,15.39-3.95,4.94-2.88,9.1-7.55,10.38-13.23.52-2.1.34-4.27.37-6.42-.07-3.89-1.53-7.63-3.62-10.87-1.98-3.1-4.51-5.82-7.18-8.34-2.06,2.95-4.55,5.78-7.88,7.31-1.52.73-3.21.95-4.86,1.16-29.43,4.39-58.89,8.63-88.32,13.03,2.32,3.41,4.61,6.87,6.42,10.6-6.95,5.38-13.53,11.33-21.26,15.6-19.87-22.9-39.59-45.93-59.38-68.91-2.53-2.36-5.51-4.18-8.13-6.44-.99-.78-1.77-1.85-2.96-2.36-4.63-2.17-9.47-4.15-13.33-7.6-1.58.42-3.35.34-4.73-.62-2.37-1.59-3.67-4.31-4.47-6.97.53-.88,1.03-1.76,1.53-2.66C.11,36.82-.99,28.67.97,21.16c1.63-6.45,5.54-12.3,10.99-16.13M28.82,29.44c8.66-4.99,16.64-11.16,23.72-18.22-8.61,5.07-16.75,11.04-23.72,18.22M190.74,19.91c-35.91,1.48-71.83,2.47-107.75,3.79-6.35.21-12.11,5.9-12.02,12.33.18,3.62,1.03,7.17,1.83,10.7.87,3.58,1.57,7.19,2.27,10.81.39,1.96.92,3.94,2.01,5.64,9.79,14.94,19.59,29.88,29.34,44.85,27.69-3.78,55.35-7.76,83.03-11.57,5.4-.94,10.07-5.57,10.69-11.07,1.47-17.61,2.84-35.22,4.24-52.83.28-4.12-1.12-8.67-4.64-11.11-2.59-1.89-5.97-1.66-9.01-1.53M52.66,39.1c1.51,2.71,3.02,5.42,4.56,8.11,1.2-.96,2.41-1.92,3.62-2.89-1.35-2.76-2.66-5.54-3.99-8.31-1.4,1.02-2.79,2.05-4.18,3.08M59.1,48.77c14.32,20.18,28.5,40.46,42.88,60.6,1.79,2.41,3.4,4.96,5.31,7.28-1.12-1.89-2.38-3.69-3.56-5.54-14-21.48-28.12-42.87-42.21-64.29-.81.64-1.62,1.3-2.43,1.96M287.11,13.79c4.94-.84,10.03-.85,14.97,0-.01,18.37,0,36.74,0,55.11.02,2.5,0,5.07.8,7.47.44,1.42,1.52,2.71,3.01,3.09,2.22.6,4.57.37,6.8-.05,1.01,3.75,1.44,7.7,1,11.57-3.13.85-6.41.96-9.64.92-4.9-.13-10-1.9-13.2-5.76-2.92-3.63-3.66-8.46-3.72-12.99-.02-19.79,0-39.58,0-59.37M226.93,14.76c6.05-.56,12.13-.9,18.21-.97,4.97-.09,9.98.34,14.81,1.59,4.26,1.21,8.35,3.37,11.35,6.68,2.42,2.68,4.25,5.93,5.13,9.44,1.04,4.06,1.18,8.3.88,12.46-.31,3.93-1.27,7.9-3.42,11.25-2.16,3.59-5.36,6.52-9.12,8.38-3.77,1.96-8,2.71-12.18,3.15-3.37.34-6.77.36-10.14.06,0,8.16,0,16.33,0,24.49-5.13.73-10.37.69-15.49,0-.01-25.51.01-51.02-.01-76.54M242.43,26.95c0,9.02,0,18.03,0,27.05,2.12.28,4.26.21,6.39.14,3.75-.21,7.71-1.54,10.06-4.64,2.61-3.34,2.94-7.85,2.43-11.92-.46-3.8-2.61-7.52-6.09-9.28-3.93-2.01-8.52-1.85-12.79-1.36M126.86,31.22c15.26,9.51,30.56,18.95,45.8,28.51-15.49,11.09-30.51,22.82-45.8,34.18-.03-20.9-.06-41.79,0-62.69M321.35,38.28c5.53-1.88,11.35-2.92,17.19-3.07,5.31-.09,10.83.66,15.46,3.41,3.34,1.91,5.96,5.01,7.24,8.64,1.76,4.62,1.63,9.63,1.6,14.49,0,9.18,0,18.35,0,27.53-5.48,1.63-11.12,2.89-16.85,3.17-5.04.28-10.15.11-15.07-1.07-3.78-.94-7.47-2.82-9.95-5.9-1.94-2.35-3.04-5.31-3.36-8.33-.4-3.54-.21-7.3,1.41-10.53,1.93-3.79,5.44-6.58,9.35-8.12,6.27-2.51,13.19-2.58,19.82-1.98.06-2.19-.03-4.61-1.48-6.39-1.65-2.15-4.51-2.74-7.07-2.92-5.2-.51-10.41.45-15.33,2.09-1.13-2.19-2.17-4.46-2.61-6.89-.26-1.36-.32-2.75-.34-4.13M335.54,66.97c-1.94.81-3.47,2.57-3.82,4.66-.37,2.26-.25,4.92,1.46,6.63,1.83,1.97,4.64,2.48,7.21,2.58,2.62.25,5.23-.2,7.79-.69,0-4.66,0-9.32,0-13.98-4.18-.68-8.68-.96-12.65.8M366.61,36.48c3.06-.74,6.22-.64,9.35-.62,2.26.04,4.54.13,6.77.6,3.85,15.92,7.61,31.85,11.47,47.77,4.32-15.91,8.63-31.81,12.91-47.73,3.53-.7,7.14-.72,10.72-.6,1.47.07,2.93.3,4.38.58-6.63,21.92-13.25,43.85-19.88,65.77-1.23,4.34-2.91,8.83-6.39,11.87-2.81,2.48-6.62,3.33-10.27,3.52-4.04.24-8.1-.25-12-1.33-.38-3.74.57-7.46,1.94-10.91,2.77.78,5.71,1.07,8.56.63,1.68-.3,3.12-1.39,4.08-2.78,1.6-2.24,2.19-4.97,2.93-7.57-2.65-.16-5.52-.74-7.41-2.75-1.05-1.03-1.28-2.52-1.7-3.86-5.16-17.53-10.31-35.07-15.47-52.6"/>
+      <g>
+        <g>
+          <path class="cls-1" d="M238.74,102.52c.27-.05.58-.09.91-.11.34-.03.64-.04.91-.04s.58.01.93.04c.35.02.66.06.93.11v19.21c-.27.05-.59.09-.93.11-.35.02-.66.04-.93.04s-.58-.01-.91-.04c-.34-.03-.64-.06-.91-.11v-19.21Z"/>
+          <path class="cls-1" d="M241.98,111.81l6.08-9.21c.32-.05.65-.09.97-.11.32-.02.66-.04,1.01-.04.37,0,.73.01,1.06.04.34.03.68.06,1.03.11l-6.08,8.95,7.12,10.18c-.35.05-.68.09-1.01.11-.32.02-.66.04-1.01.04s-.7-.01-1.04-.04c-.35-.03-.7-.06-1.04-.11l-7.09-9.92Z"/>
+        </g>
+        <g>
+          <path class="cls-1" d="M328.78,102.52c.27-.05.58-.09.91-.11.34-.03.64-.04.91-.04s.58.01.93.04c.35.02.66.06.93.11v19.21c-.27.05-.59.09-.93.11-.35.02-.66.04-.93.04s-.58-.01-.91-.04c-.34-.03-.64-.06-.91-.11v-19.21Z"/>
+          <path class="cls-1" d="M332.02,111.81l6.08-9.21c.32-.05.65-.09.97-.11.32-.02.66-.04,1.01-.04.37,0,.73.01,1.06.04.34.03.68.06,1.03.11l-6.08,8.95,7.12,10.18c-.35.05-.68.09-1.01.11-.32.02-.66.04-1.01.04s-.7-.01-1.04-.04c-.35-.03-.7-.06-1.04-.11l-7.09-9.92Z"/>
+        </g>
+        <path class="cls-1" d="M266.36,109.13c0-1.47-.37-2.49-1.12-3.06-.75-.57-1.83-.86-3.25-.86-.87,0-1.68.07-2.44.2-.76.14-1.5.32-2.22.54-.47-.82-.71-1.8-.71-2.95.85-.27,1.78-.49,2.8-.63,1.02-.15,2-.22,2.95-.22,2.49,0,4.38.57,5.67,1.7s1.94,2.94,1.94,5.43v11.97c-.87.2-1.93.4-3.17.62s-2.51.32-3.81.32c-1.22,0-2.32-.11-3.3-.34-.98-.22-1.82-.58-2.5-1.08-.68-.5-1.21-1.13-1.59-1.9-.37-.77-.56-1.7-.56-2.8s.22-2.01.65-2.82c.43-.81,1.03-1.48,1.77-2.01.75-.53,1.6-.93,2.57-1.19.97-.26,1.99-.39,3.06-.39.8,0,1.45.02,1.96.06.51.04.94.08,1.29.13v-.71ZM266.36,112.74c-.37-.05-.84-.1-1.42-.15-.57-.05-1.06-.07-1.45-.07-1.54,0-2.72.29-3.52.86-.81.57-1.21,1.44-1.21,2.61,0,.75.14,1.33.41,1.75s.62.75,1.03.97.86.36,1.36.41c.5.05.97.07,1.42.07.57,0,1.16-.03,1.77-.09.61-.06,1.15-.16,1.62-.28v-6.08Z"/>
+        <path class="cls-1" d="M275.54,102.6c.27-.05.53-.09.78-.11.25-.02.51-.04.78-.04s.55.01.82.04c.27.03.52.06.75.11.07.37.15.86.22,1.47.07.61.11,1.13.11,1.55.52-.85,1.21-1.58,2.07-2.2.86-.62,1.96-.93,3.3-.93.2,0,.4,0,.61.02.21.01.39.03.54.06.05.22.09.46.11.71.03.25.04.51.04.78,0,.3-.02.61-.06.93-.04.32-.08.63-.13.93-.2-.05-.4-.07-.62-.07h-.5c-.67,0-1.31.09-1.92.28s-1.16.52-1.64.99c-.49.47-.87,1.12-1.16,1.94-.29.82-.43,1.88-.43,3.17v9.51c-.27.05-.58.09-.91.11-.34.02-.64.04-.91.04s-.58-.01-.91-.04c-.34-.03-.65-.06-.95-.11v-19.14Z"/>
+        <path class="cls-1" d="M299.15,109.13c0-1.47-.37-2.49-1.12-3.06-.75-.57-1.83-.86-3.25-.86-.87,0-1.68.07-2.44.2-.76.14-1.5.32-2.22.54-.47-.82-.71-1.8-.71-2.95.85-.27,1.78-.49,2.8-.63,1.02-.15,2-.22,2.95-.22,2.49,0,4.38.57,5.67,1.7s1.94,2.94,1.94,5.43v11.97c-.87.2-1.93.4-3.17.62s-2.51.32-3.81.32c-1.22,0-2.32-.11-3.3-.34-.98-.22-1.82-.58-2.5-1.08-.68-.5-1.21-1.13-1.59-1.9-.37-.77-.56-1.7-.56-2.8s.22-2.01.65-2.82c.43-.81,1.03-1.48,1.77-2.01.75-.53,1.6-.93,2.57-1.19.97-.26,1.99-.39,3.06-.39.8,0,1.45.02,1.96.06.51.04.94.08,1.29.13v-.71ZM299.15,112.74c-.37-.05-.84-.1-1.42-.15-.57-.05-1.06-.07-1.45-.07-1.54,0-2.72.29-3.52.86-.81.57-1.21,1.44-1.21,2.61,0,.75.14,1.33.41,1.75s.62.75,1.03.97.86.36,1.36.41c.5.05.97.07,1.42.07.57,0,1.16-.03,1.77-.09.61-.06,1.15-.16,1.62-.28v-6.08Z"/>
+        <path class="cls-1" d="M316.08,122.18c-1.49,0-2.8-.26-3.92-.76-1.12-.51-2.05-1.21-2.8-2.11-.75-.9-1.3-1.95-1.66-3.17-.36-1.22-.54-2.54-.54-3.95s.18-2.74.54-3.95c.36-1.22.91-2.28,1.66-3.17.75-.9,1.68-1.6,2.8-2.13,1.12-.52,2.42-.78,3.92-.78s2.8.26,3.92.78,2.05,1.23,2.8,2.13c.75.9,1.3,1.95,1.66,3.17s.54,2.54.54,3.95-.18,2.74-.54,3.95-.91,2.27-1.66,3.17c-.75.9-1.68,1.6-2.8,2.11s-2.42.76-3.92.76ZM316.08,119.23c1.72,0,2.98-.62,3.81-1.86s1.23-2.97,1.23-5.18-.41-3.94-1.23-5.17-2.09-1.85-3.81-1.85-2.98.62-3.79,1.85-1.21,2.95-1.21,5.17.4,3.94,1.21,5.18,2.07,1.86,3.79,1.86Z"/>
+        <path class="cls-1" d="M348.07,113.08c.05,2.09.59,3.62,1.62,4.59,1.03.97,2.56,1.45,4.57,1.45,1.77,0,3.44-.31,5.04-.93.2.37.36.83.49,1.36.12.53.2,1.06.22,1.59-.82.35-1.72.61-2.7.78-.98.17-2.07.26-3.26.26-1.74,0-3.23-.24-4.48-.73-1.24-.49-2.27-1.17-3.08-2.05-.81-.88-1.4-1.93-1.77-3.13-.37-1.21-.56-2.53-.56-3.97s.18-2.74.54-3.97c.36-1.23.91-2.3,1.66-3.21.75-.91,1.68-1.63,2.82-2.16s2.47-.8,4.01-.8c1.32,0,2.47.22,3.47.67.99.45,1.83,1.06,2.5,1.85.67.78,1.18,1.72,1.53,2.8.35,1.08.52,2.26.52,3.53,0,.35-.01.72-.04,1.1-.03.39-.05.72-.07.99h-13.02ZM357.54,110.32c0-.7-.09-1.36-.28-2s-.46-1.19-.82-1.66-.82-.85-1.38-1.14c-.56-.29-1.22-.43-2-.43-1.52,0-2.68.46-3.49,1.38-.81.92-1.3,2.2-1.47,3.84h9.44Z"/>
+      </g>
+    </g>
+  </g>
+</svg></template>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+
+/* Logo da PlayKaraoke (SVG branco) nos lugares marcados com .logo. */
+document.querySelectorAll('.logo').forEach((el) => el.append($('logo-svg').content.cloneNode(true)));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+
+/* Identidade do celular (aleatória, guardada) e o nome do cantor. */
+let client = store.get('pk_client');
+if (!client) {
+  client = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  store.set('pk_client', client);
+}
+let myName = store.get('pk_name') || '';
+
+/* Link com ?name= (e ?client=, para demonstração) já entra com esse nome. */
+const params = new URLSearchParams(location.search);
+if (params.get('client')) { client = params.get('client'); store.set('pk_client', client); }
+if (params.get('name')) { myName = params.get('name').slice(0, 40); store.set('pk_name', myName); }
+
+/* Mesmo hash do PS5 (FNV-1a), para achar "eu" no estado público. */
+function tagOf(text) {
+  let h = 2166136261;
+  for (const b of new TextEncoder().encode(text)) { h ^= b; h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+const myTag = tagOf(client);
+
+/* ---------- Idioma ---------- */
+
+const I18N = {
+  en: {
+    tagline: 'Request songs to sing on the TV.', namePh: 'Your name', enter: 'Enter',
+    offline: 'No connection to the PS5. Retrying…', yourTurnNow: "It's your turn! Singing now",
+    key: 'Key', original: 'Original', keyOriginal: 'Original key', finish: 'Finish',
+    searchTitle: 'Search songs', searchPh: 'Artist, song or code', searchBtn: 'Search',
+    fAll: 'All', fCdg: 'CDG only', fMp4: 'Video only (MP4)', mySongs: 'My songs', rotation: 'Rotation',
+    tabSearch: 'Search', tabMine: 'My turn', confirmAsk: 'Request this song?', cancel: 'Cancel', request: 'Request',
+    youAre: 'You are ', change: ' · change', enterName: 'Please enter your name.', searching: 'Searching…',
+    nothing: 'Nothing found.', scanning: ' (the PS5 is still reading the drive)',
+    showing: (n, t) => `Showing ${n} of ${t}: refine your search.`,
+    searchFail: "Couldn't search. Check the connection to the PS5.", requested: 'Requested: ',
+    yourTurnBig: 'Your turn!', enjoy: 'Have a great performance 🎤', noSongsBig: 'No songs of yours in the queue',
+    noSongsHint: 'Search for a song and request it in the Search tab.', nextYou: "You're next!",
+    left: (n) => `${n} song${n === 1 ? '' : 's'} to go`, untilTurn: 'until your turn', empty: 'Empty.',
+    keyWord: 'key ', queueEmpty: 'The queue is empty.', singing: 'Singing: ', next: 'Next: ', you: 'YOU',
+    cancelAsk: (t) => `Cancel "${t}"?`, cancelled: 'Song cancelled.', finishAsk: 'Finish your song now?',
+    genericErr: 'Something went wrong, try again.',
+  },
+  pt: {
+    tagline: 'Peça músicas para cantar na TV.', namePh: 'Seu nome', enter: 'Entrar',
+    offline: 'Sem conexão com o PS5. Tentando de novo…', yourTurnNow: 'É a sua vez! Cantando agora',
+    key: 'Tom', original: 'Original', keyOriginal: 'Tom original', finish: 'Terminar',
+    searchTitle: 'Buscar música', searchPh: 'Artista, música ou código', searchBtn: 'Buscar',
+    fAll: 'Todas', fCdg: 'Só CDG', fMp4: 'Só vídeo (MP4)', mySongs: 'Minhas músicas', rotation: 'Rotação',
+    tabSearch: 'Buscar', tabMine: 'Minha vez', confirmAsk: 'Pedir esta música?', cancel: 'Cancelar', request: 'Pedir',
+    youAre: 'Você é ', change: ' · trocar', enterName: 'Digite o seu nome.', searching: 'Buscando…',
+    nothing: 'Nada encontrado.', scanning: ' (o PS5 ainda está lendo o HD)',
+    showing: (n, t) => `Mostrando ${n} de ${t}: refine a busca.`,
+    searchFail: 'Não consegui buscar. Verifique a conexão com o PS5.', requested: 'Pedido feito: ',
+    yourTurnBig: 'Sua vez!', enjoy: 'Boa apresentação 🎤', noSongsBig: 'Nenhuma música sua na fila',
+    noSongsHint: 'Busque uma música e peça na aba Buscar.', nextYou: 'Você é o próximo!',
+    left: (n) => `Faltam ${n} música${n === 1 ? '' : 's'}`, untilTurn: 'para a sua vez', empty: 'Vazia.',
+    keyWord: 'tom ', queueEmpty: 'A fila está vazia.', singing: 'Cantando: ', next: 'Próxima: ', you: 'VOCÊ',
+    cancelAsk: (t) => `Cancelar "${t}"?`, cancelled: 'Música cancelada.', finishAsk: 'Terminar a sua música agora?',
+    genericErr: 'Não deu certo, tente de novo.',
+  },
+};
+
+/* Escolha do celular (bandeira) > idioma da TV > idioma do celular. */
+let chosenLang = store.get('pk_lang');
+let lang = chosenLang || ((navigator.language || '').toLowerCase().startsWith('pt') ? 'pt' : 'en');
+const t = (key) => I18N[lang][key];
+
+function applyLang() {
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('on', b.dataset.lang === lang));
+  if (myName) showWho();
+  render();
+}
+
+document.querySelectorAll('[data-lang]').forEach((b) => {
+  b.onclick = () => {
+    lang = chosenLang = b.dataset.lang;
+    store.set('pk_lang', lang);
+    applyLang();
+  };
+});
+
+let state = null;
+let filter = 0;
+let pending = null; // música aguardando confirmação
+
+function toast(text, error) {
+  const box = $('toast');
+  box.textContent = text;
+  box.className = 'toast' + (error ? ' err' : '');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => box.classList.add('hidden'), 2800);
+}
+
+async function api(method, path, params) {
+  const qs = new URLSearchParams({ client, ...(params || {}) });
+  const res = await fetch(path + '?' + qs.toString(), { method, cache: 'no-store' });
+  let body = {};
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(body.error || t('genericErr'));
+  return body;
+}
+
+function line(song) { return [song.artist, song.title].filter(Boolean).join(' – '); }
+function pitchText(st) { return st ? (st > 0 ? '+' + st : String(st)) : t('original'); }
+
+/* ---------- Telas ---------- */
+
+function showWelcome() {
+  $('welcome').classList.remove('hidden');
+  $('app').classList.add('hidden');
+  $('name-input').value = myName;
+  setTimeout(() => $('name-input').focus(), 50);
+}
+
+function showWho() {
+  $('who').innerHTML = '';
+  $('who').append(t('youAre'));
+  const b = document.createElement('b');
+  b.textContent = myName;
+  $('who').append(b, t('change'));
+}
+
+function showApp() {
+  $('welcome').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  showWho();
+}
+
+$('name-ok').onclick = () => {
+  const name = $('name-input').value.trim();
+  if (!name) { toast(t('enterName'), true); return; }
+  myName = name;
+  store.set('pk_name', name);
+  showApp();
+};
+$('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('name-ok').click(); });
+$('who').onclick = showWelcome;
+
+function setTab(which) {
+  $('tab-search').classList.toggle('hidden', which !== 'search');
+  $('tab-mine').classList.toggle('hidden', which !== 'mine');
+  $('tab-btn-search').classList.toggle('on', which === 'search');
+  $('tab-btn-mine').classList.toggle('on', which === 'mine');
+}
+$('tab-btn-search').onclick = () => setTab('search');
+$('tab-btn-mine').onclick = () => setTab('mine');
+
+/* ---------- Busca ---------- */
+
+document.querySelectorAll('[data-filter]').forEach((chip) => {
+  chip.onclick = () => {
+    filter = Number(chip.dataset.filter);
+    document.querySelectorAll('[data-filter]').forEach((c) => c.classList.toggle('on', c === chip));
+    if ($('q').value.trim()) search();
+  };
+});
+
+$('search-form').onsubmit = (e) => { e.preventDefault(); $('q').blur(); search(); };
+
+async function search() {
+  const q = $('q').value.trim();
+  const list = $('results');
+  list.innerHTML = '';
+  if (!q) { $('search-msg').textContent = ''; return; }
+  $('search-msg').textContent = t('searching');
+  try {
+    const res = await fetch('/api/search?' + new URLSearchParams({ q, f: filter }), { cache: 'no-store' });
+    const body = await res.json();
+    const n = body.results.length;
+    $('search-msg').textContent = n === 0 ? t('nothing') + (body.scanning ? t('scanning') : '')
+      : body.total > n ? t('showing')(n, body.total) : '';
+    for (const song of body.results) {
+      const li = document.createElement('li');
+      li.className = 'item';
+      const info = document.createElement('div');
+      info.className = 'info';
+      const title = document.createElement('div');
+      title.className = 't';
+      title.textContent = song.title;
+      const a = document.createElement('div');
+      a.className = 'a';
+      a.textContent = [song.artist, song.code].filter(Boolean).join(' · ');
+      info.append(title, a);
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = song.format;
+      li.append(info, tag);
+      li.onclick = () => confirmSong(song);
+      list.append(li);
+    }
+  } catch (e) {
+    $('search-msg').textContent = t('searchFail');
+  }
+}
+
+function confirmSong(song) {
+  pending = song;
+  $('sheet-title').textContent = song.title;
+  $('sheet-artist').textContent = [song.artist, song.code, song.format].filter(Boolean).join(' · ');
+  $('sheet').classList.remove('hidden');
+}
+$('sheet-cancel').onclick = () => $('sheet').classList.add('hidden');
+$('sheet').onclick = (e) => { if (e.target === $('sheet')) $('sheet').classList.add('hidden'); };
+$('sheet-ok').onclick = async () => {
+  const song = pending;
+  $('sheet').classList.add('hidden');
+  if (!song) return;
+  try {
+    await api('POST', '/api/queue', { name: myName, path: song.path });
+    toast(t('requested') + song.title);
+    poll();
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+/* ---------- Estado (consulta a cada 1 s) ---------- */
+
+function mySinger() {
+  return state ? state.rotation.find((s) => s.c === myTag) : null;
+}
+
+/* Quantas músicas tocam antes da próxima minha (1 por cantor, na rotação). */
+function songsBeforeMe() {
+  const rot = state.rotation;
+  let count = 0;
+  for (let i = 0; i < rot.length; i++) {
+    const s = rot[i];
+    let songs = s.songs.length;
+    if (i === 0 && state.now) songs -= 1; // a que está tocando já não conta
+    if (s.c === myTag) return songs > 0 ? count : -1;
+    if (songs > 0) count++;
+  }
+  return -1;
+}
+
+function render() {
+  if (!state) return;
+  const me = mySinger();
+  const singingNow = state.now && state.now.c === myTag;
+
+  /* Cantando agora */
+  $('singing').classList.toggle('hidden', !singingNow);
+  if (singingNow) {
+    $('singing-title').textContent = state.now.song.title;
+    $('singing-artist').textContent = state.now.song.artist;
+    $('singing-pitch').textContent = pitchText(state.now.song.semitones);
+  }
+
+  /* Minha vez */
+  const turn = $('turn');
+  const mineSongs = me ? me.songs.filter((s) => !(state.now && s.id === state.now.song.id)) : [];
+  if (singingNow) {
+    turn.innerHTML = `<div class="big">${t('yourTurnBig')}</div><div class="muted">${t('enjoy')}</div>`;
+  } else if (!mineSongs.length) {
+    turn.innerHTML = `<div class="big">${t('noSongsBig')}</div><div class="muted">${t('noSongsHint')}</div>`;
+  } else {
+    const n = songsBeforeMe();
+    turn.innerHTML = n === 0 ? `<div class="big">${t('nextYou')}</div>`
+      : `<div class="big">${t('left')(n)}</div><div class="muted">${t('untilTurn')}</div>`;
+  }
+  $('mine-count').textContent = mineSongs.length;
+  $('mine-count').classList.toggle('hidden', !mineSongs.length);
+
+  const mine = $('mine');
+  mine.innerHTML = '';
+  if (!mineSongs.length) mine.innerHTML = `<li class="item muted">${t('empty')}</li>`;
+  mineSongs.forEach((song, i) => {
+    const li = document.createElement('li');
+    li.className = 'item';
+    const info = document.createElement('div');
+    info.className = 'info';
+    const title = document.createElement('div');
+    title.className = 't';
+    title.textContent = (i + 1) + '. ' + song.title;
+    const a = document.createElement('div');
+    a.className = 'a';
+    a.textContent = [song.artist, t('keyWord') + pitchText(song.semitones)].filter(Boolean).join(' · ');
+    info.append(title, a);
+    const down = document.createElement('button');
+    down.className = 'mini';
+    down.textContent = '−';
+    down.onclick = () => setPitch(song, song.semitones - 1);
+    const up = document.createElement('button');
+    up.className = 'mini';
+    up.textContent = '+';
+    up.onclick = () => setPitch(song, song.semitones + 1);
+    const x = document.createElement('button');
+    x.className = 'mini x';
+    x.textContent = t('cancel');
+    x.onclick = () => cancelSong(song);
+    li.append(info, down, up, x);
+    mine.append(li);
+  });
+
+  /* Rotação geral */
+  const rot = $('rotation');
+  rot.innerHTML = '';
+  const active = state.rotation.filter((s) => s.songs.length);
+  if (!active.length) rot.innerHTML = `<li class="item muted">${t('queueEmpty')}</li>`;
+  active.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.className = 'item';
+    const info = document.createElement('div');
+    info.className = 'info';
+    const title = document.createElement('div');
+    title.className = 't';
+    title.textContent = s.name;
+    const playing = i === 0 && state.now && s.songs[0].id === state.now.song.id;
+    const a = document.createElement('div');
+    a.className = 'a';
+    a.textContent = (playing ? t('singing') : t('next')) + line(s.songs[0]);
+    info.append(title, a);
+    li.append(info);
+    if (s.c === myTag) {
+      const tag = document.createElement('span');
+      tag.className = 'tag mine';
+      tag.textContent = t('you');
+      li.append(tag);
+    }
+    rot.append(li);
+  });
+}
+
+async function setPitch(song, st) {
+  st = Math.max(-12, Math.min(12, st));
+  try {
+    await api('POST', '/api/pitch', { id: song.id, semitones: st });
+    poll();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function cancelSong(song) {
+  if (!confirm(t('cancelAsk')(song.title))) return;
+  try {
+    await api('POST', '/api/cancel', { id: song.id });
+    toast(t('cancelled'));
+    poll();
+  } catch (e) { toast(e.message, true); }
+}
+
+document.querySelectorAll('[data-pitch]').forEach((b) => {
+  b.onclick = () => state && state.now && setPitch(state.now.song, state.now.song.semitones + Number(b.dataset.pitch));
+});
+$('pitch-reset').onclick = () => state && state.now && setPitch(state.now.song, 0);
+$('finish').onclick = async () => {
+  if (!confirm(t('finishAsk'))) return;
+  try { await api('POST', '/api/finish'); poll(); } catch (e) { toast(e.message, true); }
+};
+
+async function poll() {
+  try {
+    const res = await fetch('/api/state', { cache: 'no-store' });
+    state = await res.json();
+    $('offline').classList.add('hidden');
+    /* Sem escolha no celular, segue o idioma da TV. */
+    if (!chosenLang && state.lang && state.lang !== lang) { lang = state.lang; applyLang(); }
+    render();
+  } catch (e) {
+    $('offline').classList.remove('hidden');
+  }
+}
+
+if (myName) showApp(); else showWelcome();
+applyLang();
+poll();
+/* Links prontos: ?tab=mine abre "Minha vez"; ?q= já faz a busca. */
+if (params.get('tab') === 'mine') setTab('mine');
+if (params.get('q')) { $('q').value = params.get('q'); search(); }
+setInterval(poll, 1000);
+</script>
+</body>
+</html>
