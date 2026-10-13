@@ -278,6 +278,10 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
   if (is_get && strcmp(url, "/yt") == 0)
     return reply(conn, 200, "text/html; charset=utf-8", s->yt_page, s->yt_page_size, MHD_RESPMEM_PERSISTENT);
   if (is_get && strcmp(url, "/api/state") == 0) return handle_state(s, conn);
+  if (is_post && strcmp(url, "/api/ytlog") == 0) { /* diagnóstico do player do YouTube */
+    printf("[yt] video=%s %s\n", arg(conn, "v"), arg(conn, "e"));
+    return reply_json(conn, 200, "{\"ok\":true}");
+  }
   if (is_get && strcmp(url, "/api/search") == 0) return handle_search(s, conn);
   if (is_post && strcmp(url, "/api/queue") == 0) return handle_command(s, conn, CMD_ADD);
   if (is_post && strcmp(url, "/api/cancel") == 0) return handle_command(s, conn, CMD_CANCEL);
