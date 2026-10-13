@@ -57,7 +57,7 @@ int ui_text_width(ui_t *ui, ui_font_t font, const char *text);
 int ui_line_height(ui_t *ui, ui_font_t font);
 
 /* Botões do DualSense para as dicas de rodapé. */
-typedef enum { BTN_CROSS, BTN_CIRCLE, BTN_TRIANGLE, BTN_SQUARE, BTN_OPTIONS, BTN_L1R1, BTN_R1, BTN_RSTICK, BTN_DPAD } ui_button_t;
+typedef enum { BTN_CROSS, BTN_CIRCLE, BTN_TRIANGLE, BTN_SQUARE, BTN_OPTIONS, BTN_L1R1, BTN_L1, BTN_R1, BTN_RSTICK, BTN_DPAD } ui_button_t;
 
 /* Desenha o botão e o texto ao lado (y = topo da linha de FONT_SMALL).
  * Devolve a largura total. */

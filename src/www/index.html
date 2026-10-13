@@ -126,6 +126,10 @@
       <button class="btn" data-i18n="searchBtn"></button>
     </form>
     <div class="chips">
+      <button class="chip on" data-src="usb" data-i18n="srcUsb"></button>
+      <button class="chip" data-src="yt">YouTube</button>
+    </div>
+    <div id="filters" class="chips">
       <button class="chip on" data-filter="0" data-i18n="fAll"></button>
       <button class="chip" data-filter="1" data-i18n="fCdg"></button>
       <button class="chip" data-filter="2" data-i18n="fMp4"></button>
@@ -230,7 +234,8 @@ const I18N = {
     offline: 'No connection to the PS5. Retrying…', yourTurnNow: "It's your turn! Singing now",
     key: 'Key', original: 'Original', keyOriginal: 'Original key', finish: 'Finish',
     searchTitle: 'Search songs', searchPh: 'Artist, song or code', searchBtn: 'Search',
-    fAll: 'All', fCdg: 'CDG only', fMp4: 'Video only (MP4)', mySongs: 'My songs', rotation: 'Rotation',
+    fAll: 'All', fCdg: 'CDG only', fMp4: 'Video only (MP4)', srcUsb: 'USB drive',
+    ytNote: 'YouTube videos play in the PS5 web browser.', mySongs: 'My songs', rotation: 'Rotation',
     tabSearch: 'Search', tabMine: 'My turn', confirmAsk: 'Request this song?', cancel: 'Cancel', request: 'Request',
     youAre: 'You are ', change: ' · change', enterName: 'Please enter your name.', searching: 'Searching…',
     nothing: 'Nothing found.', scanning: ' (the PS5 is still reading the drive)',
@@ -248,7 +253,8 @@ const I18N = {
     offline: 'Sem conexão com o PS5. Tentando de novo…', yourTurnNow: 'É a sua vez! Cantando agora',
     key: 'Tom', original: 'Original', keyOriginal: 'Tom original', finish: 'Terminar',
     searchTitle: 'Buscar música', searchPh: 'Artista, música ou código', searchBtn: 'Buscar',
-    fAll: 'Todas', fCdg: 'Só CDG', fMp4: 'Só vídeo (MP4)', mySongs: 'Minhas músicas', rotation: 'Rotação',
+    fAll: 'Todas', fCdg: 'Só CDG', fMp4: 'Só vídeo (MP4)', srcUsb: 'HD/pen drive',
+    ytNote: 'Os vídeos do YouTube tocam no navegador do PS5.', mySongs: 'Minhas músicas', rotation: 'Rotação',
     tabSearch: 'Buscar', tabMine: 'Minha vez', confirmAsk: 'Pedir esta música?', cancel: 'Cancelar', request: 'Pedir',
     youAre: 'Você é ', change: ' · trocar', enterName: 'Digite o seu nome.', searching: 'Buscando…',
     nothing: 'Nada encontrado.', scanning: ' (o PS5 ainda está lendo o HD)',
@@ -287,6 +293,7 @@ document.querySelectorAll('[data-lang]').forEach((b) => {
 
 let state = null;
 let filter = 0;
+let source = 'usb'; // 'usb' (HD/pen drive) ou 'yt' (YouTube)
 let pending = null; // música aguardando confirmação
 
 function toast(text, error) {
@@ -361,6 +368,17 @@ document.querySelectorAll('[data-filter]').forEach((chip) => {
   };
 });
 
+document.querySelectorAll('[data-src]').forEach((chip) => {
+  chip.onclick = () => {
+    source = chip.dataset.src;
+    document.querySelectorAll('[data-src]').forEach((c) => c.classList.toggle('on', c === chip));
+    $('filters').classList.toggle('hidden', source === 'yt');
+    $('results').innerHTML = '';
+    $('search-msg').textContent = source === 'yt' ? t('ytNote') : '';
+    if ($('q').value.trim()) search();
+  };
+});
+
 $('search-form').onsubmit = (e) => { e.preventDefault(); $('q').blur(); search(); };
 
 async function search() {
@@ -370,8 +388,10 @@ async function search() {
   if (!q) { $('search-msg').textContent = ''; return; }
   $('search-msg').textContent = t('searching');
   try {
-    const res = await fetch('/api/search?' + new URLSearchParams({ q, f: filter }), { cache: 'no-store' });
+    const params = source === 'yt' ? { q, src: 'yt' } : { q, f: filter };
+    const res = await fetch('/api/search?' + new URLSearchParams(params), { cache: 'no-store' });
     const body = await res.json();
+    if (body.error) { $('search-msg').textContent = body.error; return; }
     const n = body.results.length;
     $('search-msg').textContent = n === 0 ? t('nothing') + (body.scanning ? t('scanning') : '')
       : body.total > n ? t('showing')(n, body.total) : '';
@@ -412,7 +432,9 @@ $('sheet-ok').onclick = async () => {
   $('sheet').classList.add('hidden');
   if (!song) return;
   try {
-    await api('POST', '/api/queue', { name: myName, path: song.path });
+    const req = { name: myName, path: song.path };
+    if (song.video) req.title = song.video; // YouTube: título do vídeo
+    await api('POST', '/api/queue', req);
     toast(t('requested') + song.title);
     poll();
   } catch (e) {

@@ -37,6 +37,7 @@
 #include "i18n.h"
 #include "browser.h"
 #include "library.h"
+#include "online.h"
 #include "osd.h"
 #include "playback.h"
 #include "queue.h"
@@ -71,7 +72,7 @@ typedef enum {
 
 typedef enum {
   ACT_NONE, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
-  ACT_CROSS, ACT_CIRCLE, ACT_TRIANGLE, ACT_SQUARE, ACT_OPTIONS, ACT_R1, ACT_QUIT,
+  ACT_CROSS, ACT_CIRCLE, ACT_TRIANGLE, ACT_SQUARE, ACT_OPTIONS, ACT_L1, ACT_R1, ACT_QUIT,
   ACT_TEXT_ENTER, /* teclado do PS5 confirmado */
 } action_t;
 
@@ -111,6 +112,9 @@ typedef struct app {
   char (*results)[1024];
   int result_count, result_total, result_sel, result_scroll;
   int result_library_count; /* tamanho da biblioteca na última busca */
+  int online;               /* busca no YouTube (L1) em vez do HD */
+  online_result_t online_results[ONLINE_MAX_RESULTS];
+  char online_error[256];
 
   /* teclado do PS5 (IME): o texto chega em SDL_TEXTINPUT e o OK em Return;
    * cancelar não gera evento, só fecha o teclado */
@@ -156,6 +160,7 @@ static action_t translate_event(app_t *a, const SDL_Event *e) {
         case SDL_CONTROLLER_BUTTON_B: return ACT_CIRCLE;
         case SDL_CONTROLLER_BUTTON_Y: return ACT_TRIANGLE;
         case SDL_CONTROLLER_BUTTON_X: return ACT_SQUARE;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: return ACT_L1;
         case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: return ACT_R1;
         /* No SDL do PS5, Options chega como BACK (o touchpad é START). */
         case SDL_CONTROLLER_BUTTON_BACK: return ACT_OPTIONS;
@@ -233,17 +238,19 @@ static void song_display_for_path(const char *path, char *out, size_t size) {
   songinfo_display(&info, out, size);
 }
 
-/* ✕ numa música: entra na fila (cantor "PS5"); se já estava, sai. */
-static void toggle_in_queue(app_t *a, const char *path) {
+/* ✕ numa música: entra na fila (cantor "PS5"); se já estava, sai. `info`
+ * vem pronto nos vídeos do YouTube (NULL = lê do nome do arquivo). */
+static void toggle_in_queue(app_t *a, const char *path, const songinfo_t *info) {
   char line[512], msg[600];
-  song_display_for_path(path, line, sizeof line);
+  if (info) songinfo_display(info, line, sizeof line);
+  else song_display_for_path(path, line, sizeof line);
   if (in_queue(a, path)) {
     queue_remove_path(&a->queue, QUEUE_HOST_NAME, path);
     snprintf(msg, sizeof msg, TR("Removed from queue: %s", "Tirada da fila: %s"), line);
     show_toast(a, msg);
     return;
   }
-  queue_result_t r = queue_add(&a->queue, QUEUE_HOST_NAME, path);
+  queue_result_t r = queue_add_full(&a->queue, QUEUE_HOST_NAME, "", path, info);
   if (r == QUEUE_OK) snprintf(msg, sizeof msg, TR("In queue: %s", "Na fila: %s"), line);
   else snprintf(msg, sizeof msg, "%s", r == QUEUE_ERR_SINGER_FULL ? TR("The PS5 queue is full.", "A fila do PS5 está cheia.") : TR("Couldn't add to the queue.", "Não consegui adicionar à fila."));
   show_toast(a, msg);
@@ -477,17 +484,22 @@ static void run_cmd(app_t *a, server_cmd_t *cmd, playback_remote_t *remote) {
       for (size_t n = strlen(name); n && name[n - 1] == ' ';) name[--n] = '\0';
       if (!name[0]) { cmd_reply(cmd, 400, TR("Please enter your name.", "Digite o seu nome.")); break; }
       if (strcasecmp(name, QUEUE_HOST_NAME) == 0) { cmd_reply(cmd, 409, TR("That name is reserved: choose another one.", "Esse nome é reservado: escolha outro.")); break; }
-      if (!path_allowed(cmd->path) || access(cmd->path, R_OK) != 0) {
+      songinfo_t yt_info, *info = NULL;
+      if (online_is_path(cmd->path)) {
+        online_song_info(cmd->title[0] ? cmd->title : cmd->path, &yt_info);
+        info = &yt_info;
+      } else if (!path_allowed(cmd->path) || access(cmd->path, R_OK) != 0) {
         cmd_reply(cmd, 400, TR("That song is no longer on the drive.", "Essa música não está mais no HD."));
         break;
       }
-      queue_result_t r = queue_add_for(&a->queue, name, cmd->client, cmd->path);
+      queue_result_t r = queue_add_full(&a->queue, name, cmd->client, cmd->path, info);
       if (r == QUEUE_ERR_SINGER_FULL) { cmd_reply(cmd, 409, TR("You already have 5 songs in the queue.", "Você já tem 5 músicas na fila.")); break; }
       if (r == QUEUE_ERR_NAME_TAKEN) { cmd_reply(cmd, 409, TR("That name is already taken by someone else.", "Esse nome já está sendo usado por outra pessoa.")); break; }
       if (r != QUEUE_OK) { cmd_reply(cmd, 500, TR("Couldn't request the song.", "Não consegui pedir a música.")); break; }
       cmd_reply(cmd, 200, NULL);
       char line[512], msg[640];
-      song_display_for_path(cmd->path, line, sizeof line);
+      if (info) songinfo_display(info, line, sizeof line);
+      else song_display_for_path(cmd->path, line, sizeof line);
       snprintf(msg, sizeof msg, TR("%s requested: %s", "%s pediu: %s"), name, line);
       show_toast(a, msg);
       /* Show em andamento e a TV parada: começa a contagem sozinha. */
@@ -573,11 +585,23 @@ static void start_library_scan(app_t *a) {
   browser_free(&roots);
 }
 
+static void draw(app_t *a);
+
 static void run_search(app_t *a) {
   a->result_count = a->result_total = 0;
-  if (a->query[0])
+  a->online_error[0] = '\0';
+  if (a->query[0] && a->online) {
+    /* YouTube: mostra "buscando" antes (a busca leva ~1 s). */
+    a->result_total = -1;
+    draw(a);
+    int n = online_search(a->query, a->online_results, ONLINE_MAX_RESULTS, a->online_error, sizeof a->online_error);
+    a->result_count = a->result_total = n < 0 ? 0 : n;
+    for (int i = 0; i < a->result_count; i++)
+      snprintf(a->results[i], sizeof a->results[i], ONLINE_PREFIX "%s", a->online_results[i].video_id);
+  } else if (a->query[0]) {
     a->result_count = library_search(&a->library, a->query, a->filter, a->results, LIBRARY_MAX_RESULTS,
                                      &a->result_total);
+  }
   a->result_sel = a->result_scroll = 0;
   a->result_library_count = library_count(&a->library);
   printf("[app] busca \"%s\" (filtro %d): %d de %d\n", a->query, a->filter, a->result_count, a->result_total);
@@ -794,21 +818,30 @@ static void draw_search(app_t *a) {
   ui_t *ui = &a->ui;
   char status[128];
   int total = library_count(&a->library);
-  if (a->library.scanning)
+  if (a->online)
+    snprintf(status, sizeof status, "%s", TR("YouTube: the video plays in the PS5 web browser (needs internet)",
+                                              "YouTube: o vídeo toca no navegador do PS5 (precisa de internet)"));
+  else if (a->library.scanning)
     snprintf(status, sizeof status, TR("Updating the library... %d songs found", "Atualizando a biblioteca... %d músicas encontradas"), a->library.scan_found);
   else
     snprintf(status, sizeof status, TR("Library: %d songs", "Biblioteca: %d músicas"), total);
   draw_header(a, TR("Search songs", "Buscar música"), status);
 
-  /* Caixa de busca com o filtro de formato à direita. */
+  /* Caixa de busca: à direita, a origem (L1: USB/YouTube) e, no USB, o
+   * filtro de formato (R1). */
   ui_box(ui, 64, 168, UI_W - 128, 92, 22, UI_PANEL, 255);
-  const char *flabel = filter_label(a->filter);
   int fx = UI_W - 104;
-  fx -= ui_text(ui, FONT_BODY_B, flabel, fx, 192, a->filter ? UI_BRAND : UI_TEXT_2, ALIGN_RIGHT, 0);
-  fx -= 16;
-  int pill = ui_text_width(ui, FONT_SMALL, "R1") + 28;
-  ui_hint(ui, fx - pill, 196, BTN_R1, "");
-  int box_right = fx - pill - 40;
+  if (!a->online) {
+    fx -= ui_text(ui, FONT_BODY_B, filter_label(a->filter), fx, 192, a->filter ? UI_BRAND : UI_TEXT_2, ALIGN_RIGHT, 0);
+    fx -= 16 + ui_hint_width(ui, BTN_R1, "");
+    ui_hint(ui, fx, 196, BTN_R1, "");
+    fx -= 40;
+  }
+  const char *source = a->online ? "YouTube" : TR("USB drive", "HD/pen drive");
+  fx -= ui_text(ui, FONT_BODY_B, source, fx, 192, a->online ? 0xFF4E45 : UI_TEXT, ALIGN_RIGHT, 0);
+  fx -= 16 + ui_hint_width(ui, BTN_L1, "");
+  ui_hint(ui, fx, 196, BTN_L1, "");
+  int box_right = fx - 40;
   if (a->ime_active)
     ui_text(ui, FONT_BODY, TR("Type on the PS5 keyboard...", "Digite no teclado do PS5..."), 104, 192, UI_TEXT_3, ALIGN_LEFT, 0);
   else if (a->query[0])
@@ -822,17 +855,36 @@ static void draw_search(app_t *a) {
   if (!a->query[0]) {
     int hint_w = 40 + 12 + ui_text_width(ui, FONT_SMALL, TR("Type what you're looking for", "Digitar o que procura"));
     ui_hint(ui, UI_W / 2 - hint_w / 2, 520, BTN_TRIANGLE, TR("Type what you're looking for", "Digitar o que procura"));
+  } else if (a->result_total < 0) {
+    ui_text(ui, FONT_BODY, TR("Searching YouTube...", "Buscando no YouTube..."), UI_W / 2, 480, UI_TEXT_2, ALIGN_CENTER, 0);
+  } else if (a->online_error[0]) {
+    ui_text(ui, FONT_BODY, a->online_error, UI_W / 2, 480, UI_TEXT_2, ALIGN_CENTER, 1600);
   } else if (a->result_count == 0) {
     char msg[400];
     snprintf(msg, sizeof msg, TR("Nothing found for \xE2\x80\x9C%s\xE2\x80\x9D.", "Nada encontrado para \xE2\x80\x9C%s\xE2\x80\x9D."), a->query);
     ui_text(ui, FONT_BODY, msg, UI_W / 2, 480, UI_TEXT_2, ALIGN_CENTER, 1600);
-    if (total == 0 && !a->library.scanning)
+    if (!a->online && total == 0 && !a->library.scanning)
       ui_text(ui, FONT_SMALL, TR("The library is empty: connect the drive and open the app again.", "A biblioteca está vazia: conecte o HD e abra o app de novo."), UI_W / 2, 550,
               UI_TEXT_3, ALIGN_CENTER, 0);
   }
   for (int r = 0; r < SEARCH_ROWS && a->result_scroll + r < a->result_count; r++) {
     int i = a->result_scroll + r;
-    draw_song_row(a, SEARCH_LIST_Y + r * ROW_H, a->results[i], i == a->result_sel);
+    int y = SEARCH_LIST_Y + r * ROW_H;
+    if (!a->online) {
+      draw_song_row(a, y, a->results[i], i == a->result_sel);
+      continue;
+    }
+    /* YouTube: "Artista – Música" (do título do vídeo) e o canal. */
+    if (i == a->result_sel) draw_selection(ui, y);
+    draw_checkbox(ui, 102, y + 12, in_queue(a, a->results[i]));
+    songinfo_t info;
+    online_song_info(a->online_results[i].title, &info);
+    char line[600];
+    songinfo_display(&info, line, sizeof line);
+    int right = UI_W - 100;
+    right -= ui_text(ui, FONT_SMALL, "YouTube", right, y + 14, 0xFF4E45, ALIGN_RIGHT, 0) + 24;
+    right -= ui_text(ui, FONT_SMALL, a->online_results[i].channel, right, y + 14, UI_TEXT_3, ALIGN_RIGHT, 420) + 24;
+    ui_text(ui, FONT_BODY, line, 160, y + 8, UI_TEXT, ALIGN_LEFT, right - 160);
   }
   if (a->result_total > a->result_count) {
     char more[96];
@@ -947,7 +999,7 @@ static void on_browser(app_t *a, action_t act) {
         snprintf(path, sizeof path, "%s", sel->path);
         if (browser_open(b, path) != 0) show_toast(a, TR("Couldn't open that folder.", "Não consegui abrir essa pasta."));
       } else {
-        toggle_in_queue(a, sel->path);
+        toggle_in_queue(a, sel->path, NULL);
       }
       break;
     case ACT_SQUARE: start_show(a); break;
@@ -977,11 +1029,22 @@ static void on_search(app_t *a, action_t act) {
                                                                         : a->result_count - 1;
       break;
     case ACT_CROSS:
-      if (sel) toggle_in_queue(a, sel);
+      if (sel && a->online) {
+        songinfo_t info;
+        online_song_info(a->online_results[a->result_sel].title, &info);
+        toggle_in_queue(a, sel, &info);
+      } else if (sel) {
+        toggle_in_queue(a, sel, NULL);
+      }
       break;
     case ACT_SQUARE: start_show(a); break;
     case ACT_TRIANGLE: open_keyboard(a); break;
+    case ACT_L1: /* USB ou YouTube */
+      a->online = !a->online;
+      run_search(a);
+      break;
     case ACT_R1:
+      if (a->online) break;
       a->filter = (a->filter + 1) % 3;
       run_search(a);
       break;
@@ -1033,8 +1096,10 @@ static void play_current(app_t *a) {
   a->playing_id = id;
   a->playing_semitones = song->semitones;
   publish_state(a);
-  playback_result_t r = playback_play(a->win, &a->osd, &overlay, path, &a->playing_semitones, &a->volume,
-                                      error, sizeof error);
+  char display[512];
+  songinfo_display(&song->info, display, sizeof display);
+  playback_result_t r = playback_play(a->win, &a->osd, &overlay, path, display, &a->playing_semitones,
+                                      &a->volume, error, sizeof error);
   a->playing_id = 0;
   a->playing_semitones = 0;
   reset_nav(a);
@@ -1049,6 +1114,7 @@ static void play_current(app_t *a) {
 int main(void) {
   printf("[app] iniciando\n");
   i18n_load();
+  online_init();
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
     printf("[app] SDL_Init falhou: %s\n", SDL_GetError());
@@ -1137,7 +1203,8 @@ int main(void) {
       case ST_SEARCH:
         on_search(a, act);
         /* A biblioteca terminou de atualizar: refaz a busca atual. */
-        if (a->query[0] && !a->library.scanning && library_count(&a->library) != a->result_library_count) {
+        if (a->query[0] && !a->online && !a->library.scanning &&
+            library_count(&a->library) != a->result_library_count) {
           run_search(a);
           dirty = 1;
         }

@@ -12,7 +12,9 @@
 #include <libswscale/swscale.h>
 
 #include "cdg.h"
+#include "i18n.h"
 #include "kzip.h"
+#include "online.h"
 #include "pitch.h"
 #include "player.h"
 
@@ -347,12 +349,90 @@ static playback_result_t play_zip(song_t *s, const char *path, char *error, size
   return r;
 }
 
+int sceSystemServiceLaunchWebBrowser(const char *uri, void *param);
+
+static void draw_youtube_wait(ui_t *ui, const char *display) {
+  ui_clear(ui, UI_BG);
+  ui_rect(ui, 0, 0, UI_W, 6, UI_BRAND);
+  ui_logo(ui, UI_W / 2, 90);
+  ui_text(ui, FONT_SMALL, TR("PLAYING ON YOUTUBE", "TOCANDO NO YOUTUBE"), UI_W / 2, 420, UI_TEXT_3, ALIGN_CENTER, 0);
+  ui_text(ui, FONT_HEADING, display, UI_W / 2, 460, UI_TEXT, ALIGN_CENTER, 1600);
+  ui_text(ui, FONT_BODY, TR("The video opened in the PS5 web browser.", "O vídeo abriu no navegador do PS5."),
+          UI_W / 2, 580, UI_TEXT_2, ALIGN_CENTER, 1600);
+  ui_text(ui, FONT_BODY,
+          TR("When it ends, close the browser with the circle button and press X for the next singer.",
+             "Quando acabar, feche o navegador com a bolinha e aperte X para o próximo cantor."),
+          UI_W / 2, 634, UI_TEXT_2, ALIGN_CENTER, 1700);
+  const ui_button_t b[] = {BTN_CROSS, BTN_TRIANGLE, BTN_OPTIONS};
+  const char *const l[] = {TR("Next singer", "Próximo cantor"), TR("Open the video again", "Abrir o vídeo de novo"),
+                           TR("Queue", "Fila")};
+  ui_footer(ui, b, l, 3);
+}
+
+/* Música do YouTube: abre no navegador do PS5 (player oficial) e espera o
+ * dono chamar o próximo (✕) ou o cantor terminar pelo celular. */
+static playback_result_t play_youtube(song_t *s, const char *path, const char *display) {
+  char url[256];
+  online_watch_url(path, url, sizeof url);
+  printf("[playback] youtube: %s\n", url);
+  int rc = sceSystemServiceLaunchWebBrowser(url, NULL);
+  if (rc) printf("[playback] sceSystemServiceLaunchWebBrowser: 0x%08x\n", (unsigned)rc);
+
+  ui_t *ui = s->osd->ui;
+  int dirty = 1;
+  Uint32 last_overlay = 0;
+  for (;;) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_QUIT) return PLAYBACK_STOPPED;
+      if (s->overlay_open) {
+        if (e.type == SDL_CONTROLLERDEVICEADDED) SDL_GameControllerOpen(e.cdevice.which);
+        if (s->overlay->event(s->overlay->ctx, &e)) {
+          s->overlay_open = 0;
+          dirty = 1;
+        } else {
+          s->overlay_dirty = 1;
+        }
+        continue;
+      }
+      if (e.type == SDL_CONTROLLERDEVICEADDED) SDL_GameControllerOpen(e.cdevice.which);
+      if (e.type != SDL_CONTROLLERBUTTONDOWN) continue;
+      if (e.cbutton.button == SDL_CONTROLLER_BUTTON_A) return PLAYBACK_ENDED; /* ✕ */
+      if (e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) sceSystemServiceLaunchWebBrowser(url, NULL); /* △ */
+      if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK && s->overlay) { /* OPTIONS */
+        s->overlay_open = s->overlay_dirty = 1;
+        s->overlay->open(s->overlay->ctx);
+      }
+    }
+    if (s->overlay && s->overlay->tick) {
+      playback_remote_t remote = {0};
+      s->overlay->tick(s->overlay->ctx, &remote);
+      if (remote.finish) return PLAYBACK_STOPPED;
+    }
+    Uint32 now = SDL_GetTicks();
+    if (s->overlay_open) {
+      if (s->overlay_dirty || (s->overlay->animating(s->overlay->ctx) && now - last_overlay >= 250)) {
+        s->overlay->draw(s->overlay->ctx);
+        SDL_UpdateWindowSurface(s->win);
+        s->overlay_dirty = 0;
+        last_overlay = now;
+      }
+    } else if (dirty) {
+      draw_youtube_wait(ui, display);
+      SDL_UpdateWindowSurface(s->win);
+      dirty = 0;
+    }
+    SDL_Delay(30);
+  }
+}
+
 playback_result_t playback_play(SDL_Window *win, osd_t *osd, const playback_overlay_t *overlay,
-                                const char *path, int *semitones, int *volume, char *error,
-                                size_t error_size) {
+                                const char *path, const char *display, int *semitones, int *volume,
+                                char *error, size_t error_size) {
   printf("[playback] tocando %s (tom %+d)\n", path, *semitones);
   song_t s = {win, osd, NULL, NULL, NULL, semitones, volume, overlay, 0, 0};
   error[0] = '\0';
+  if (online_is_path(path)) return play_youtube(&s, path, display);
   size_t len = strlen(path);
   if (len > 4 && strcasecmp(path + len - 4, ".zip") == 0) return play_zip(&s, path, error, error_size);
   return play_mp4(&s, path, error, error_size);

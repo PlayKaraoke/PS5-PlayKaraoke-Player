@@ -36,6 +36,11 @@ queue_result_t queue_add(queue_t *q, const char *singer_name, const char *path) 
 }
 
 queue_result_t queue_add_for(queue_t *q, const char *singer_name, const char *client, const char *path) {
+  return queue_add_full(q, singer_name, client, path, NULL);
+}
+
+queue_result_t queue_add_full(queue_t *q, const char *singer_name, const char *client, const char *path,
+                              const songinfo_t *info) {
   if (!client) client = "";
   singer_t *s = client[0] ? queue_singer_for_client(q, client) : NULL;
   if (!s) {
@@ -64,8 +69,12 @@ queue_result_t queue_add_for(queue_t *q, const char *singer_name, const char *cl
   memset(song, 0, sizeof *song);
   song->id = q->next_id++;
   snprintf(song->path, sizeof song->path, "%s", path);
-  const char *slash = strrchr(path, '/');
-  songinfo_parse(slash ? slash + 1 : path, &song->info);
+  if (info) {
+    song->info = *info;
+  } else {
+    const char *slash = strrchr(path, '/');
+    songinfo_parse(slash ? slash + 1 : path, &song->info);
+  }
   q->version++;
   return QUEUE_OK;
 }

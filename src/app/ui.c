@@ -130,6 +130,7 @@ static const char *pill_text(ui_button_t button) {
   switch (button) {
     case BTN_OPTIONS: return "OPTIONS";
     case BTN_L1R1: return "L1  R1";
+    case BTN_L1: return "L1";
     case BTN_R1: return "R1";
     case BTN_RSTICK: return "R \xE2\x86\x90 \xE2\x86\x92"; /* "R ← →" */
     default: return NULL;

@@ -40,7 +40,9 @@ typedef enum {
 } playback_result_t;
 
 /* `semitones` (tom da música) e `volume` (0-100, da sessão) entram e saem
- * atualizados. */
+ * atualizados. `display` é o nome da música ("Artista – Título"), mostrado
+ * na tela de espera das músicas do YouTube ("yt:<id>"), que tocam no
+ * navegador do PS5. */
 playback_result_t playback_play(SDL_Window *win, osd_t *osd, const playback_overlay_t *overlay,
-                                const char *path, int *semitones, int *volume, char *error,
-                                size_t error_size);
+                                const char *path, const char *display, int *semitones, int *volume,
+                                char *error, size_t error_size);

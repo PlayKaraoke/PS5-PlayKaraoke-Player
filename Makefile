@@ -15,13 +15,14 @@ TITLE_ID := PLKR00001
 APP := build/app.elf
 APP_SRCS := src/app/main.c src/app/player.c src/app/cdg.c src/app/kzip.c src/app/osd.c src/app/pitch.c \
 	src/app/playback.c src/app/ui.c src/app/assets.c src/app/songinfo.c src/app/queue.c src/app/browser.c src/app/library.c src/app/queue_view.c \
-	src/app/server.c src/app/i18n.c vendor/qrcodegen/qrcodegen.c
-APP_PKGS := sdl2 SDL2_gfx SDL2_ttf SDL2_image minizip libmicrohttpd libavformat libavcodec libswscale libswresample libavutil
+	src/app/server.c src/app/i18n.c src/app/online.c vendor/qrcodegen/qrcodegen.c
+APP_PKGS := sdl2 SDL2_gfx SDL2_ttf SDL2_image minizip libmicrohttpd libcurl libavformat libavcodec libswscale libswresample libavutil
 # DEV=1 (padrão) liga as ferramentas de desenvolvimento (prints e controle
 # simulado pela rede); a versão pública é feita com DEV=0.
 DEV ?= 1
 APP_CFLAGS := -Wall -Werror -O2 $(shell $(PKG_CONFIG) --cflags $(APP_PKGS)) $(if $(filter 1,$(DEV)),-DPK_DEV_TOOLS) \
-	-DASSET_DIR='"$(CURDIR)/assets"' -DWWW_DIR='"$(CURDIR)/src/www"'
+	-DASSET_DIR='"$(CURDIR)/assets"' -DWWW_DIR='"$(CURDIR)/src/www"' \
+	-DCACERT_FILE='"$(CURDIR)/vendor/cacert/cacert.pem"'
 APP_LIBS := $(shell $(PKG_CONFIG) --libs $(APP_PKGS))
 
 LAUNCHER := build/playkaraoke.elf
@@ -37,7 +38,7 @@ LAUNCHER_LIBS := -lkernel_sys -lSceSystemService -lSceUserService -lSceAppInstUt
 
 all: $(LAUNCHER)
 
-$(APP): $(APP_SRCS) $(wildcard src/app/*.h) $(wildcard assets/fonts/*.ttf) assets/logo.png src/www/index.html
+$(APP): $(APP_SRCS) $(wildcard src/app/*.h) $(wildcard assets/fonts/*.ttf) assets/logo.png src/www/index.html vendor/cacert/cacert.pem
 	@mkdir -p $(@D)
 	$(CC) $(APP_CFLAGS) -o $@ $(APP_SRCS) $(APP_LIBS)
 

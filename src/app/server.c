@@ -14,6 +14,7 @@
 #include <microhttpd.h>
 #include <SDL.h>
 
+#include "online.h"
 #include "songinfo.h"
 
 #define SEARCH_MAX 60
@@ -95,8 +96,45 @@ static enum MHD_Result handle_state(server_t *s, struct MHD_Connection *conn) {
   return reply(conn, 200, "application/json; charset=utf-8", copy, strlen(copy), MHD_RESPMEM_MUST_FREE);
 }
 
+/* Busca no YouTube (bloqueia esta conexão ~1 s, as outras seguem). */
+static enum MHD_Result handle_online_search(struct MHD_Connection *conn, const char *q) {
+  online_result_t results[ONLINE_MAX_RESULTS];
+  char error[256];
+  int n = q[0] ? online_search(q, results, ONLINE_MAX_RESULTS, error, sizeof error) : 0;
+  if (n < 0) {
+    char body[400] = "{\"error\":";
+    json_append_string(body, sizeof body, error);
+    strncat(body, "}", sizeof body - strlen(body) - 1);
+    return reply_json(conn, 502, body);
+  }
+  size_t size = 128 + (size_t)n * 1200;
+  char *json = malloc(size);
+  if (!json) return MHD_NO;
+  snprintf(json, size, "{\"total\":%d,\"results\":[", n);
+  for (int i = 0; i < n; i++) {
+    songinfo_t info;
+    online_song_info(results[i].title, &info);
+    char path[48];
+    snprintf(path, sizeof path, ONLINE_PREFIX "%s", results[i].video_id);
+    strncat(json, i ? ",{\"path\":" : "{\"path\":", size - strlen(json) - 1);
+    json_append_string(json, size, path);
+    strncat(json, ",\"video\":", size - strlen(json) - 1);
+    json_append_string(json, size, results[i].title);
+    strncat(json, ",\"artist\":", size - strlen(json) - 1);
+    json_append_string(json, size, info.artist);
+    strncat(json, ",\"title\":", size - strlen(json) - 1);
+    json_append_string(json, size, info.title);
+    strncat(json, ",\"code\":", size - strlen(json) - 1);
+    json_append_string(json, size, results[i].channel);
+    strncat(json, ",\"format\":\"YouTube\"}", size - strlen(json) - 1);
+  }
+  strncat(json, "]}", size - strlen(json) - 1);
+  return reply(conn, 200, "application/json; charset=utf-8", json, strlen(json), MHD_RESPMEM_MUST_FREE);
+}
+
 static enum MHD_Result handle_search(server_t *s, struct MHD_Connection *conn) {
   const char *q = arg(conn, "q");
+  if (strcmp(arg(conn, "src"), "yt") == 0) return handle_online_search(conn, q);
   int f = atoi(arg(conn, "f"));
   if (f < 0 || f > 2) f = 0;
   char (*results)[1024] = malloc(SEARCH_MAX * sizeof *results);
@@ -167,6 +205,7 @@ static enum MHD_Result handle_command(server_t *s, struct MHD_Connection *conn, 
   snprintf(cmd->client, sizeof cmd->client, "%s", arg(conn, "client"));
   snprintf(cmd->name, sizeof cmd->name, "%s", arg(conn, "name"));
   snprintf(cmd->path, sizeof cmd->path, "%s", arg(conn, "path"));
+  snprintf(cmd->title, sizeof cmd->title, "%s", arg(conn, "title"));
   cmd->song_id = atoi(arg(conn, "id"));
   cmd->semitones = atoi(arg(conn, "semitones"));
   if (!cmd->client[0]) {

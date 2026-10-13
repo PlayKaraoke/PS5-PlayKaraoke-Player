@@ -63,6 +63,11 @@ queue_result_t queue_add(queue_t *q, const char *singer_name, const char *path);
  * celular; um nome já usado por outro celular é recusado. */
 queue_result_t queue_add_for(queue_t *q, const char *singer_name, const char *client, const char *path);
 
+/* Igual, com as informações da música já prontas (ex.: vídeo do YouTube,
+ * que não tem nome de arquivo para ler). `info` NULL = lê do nome. */
+queue_result_t queue_add_full(queue_t *q, const char *singer_name, const char *client, const char *path,
+                              const songinfo_t *info);
+
 /* Cantor do celular `client`, ou NULL. */
 singer_t *queue_singer_for_client(queue_t *q, const char *client);
 
