@@ -31,7 +31,8 @@ ICON := assets/icon0.png
 LAUNCHER_CFLAGS := -Wall -Werror -O2 -Isrc/launcher \
 	-DTITLE_ID='"$(TITLE_ID)"' -DHBLDR_TITLE_ID='"$(TITLE_ID)"' \
 	-DAPP_ELF_FILE='"$(CURDIR)/$(APP)"' -DICON_FILE='"$(CURDIR)/$(ICON)"' \
-	-DLOGO_SVG_FILE='"$(CURDIR)/assets/logo.svg"'
+	-DLOGO_SVG_FILE='"$(CURDIR)/assets/logo.svg"' \
+	-DBACKGROUND_FILE='"$(CURDIR)/assets/dashboard/pic0.dds"'
 LAUNCHER_LIBS := -lkernel_sys -lSceSystemService -lSceUserService -lSceAppInstUtil
 
 all: $(LAUNCHER)
@@ -40,7 +41,7 @@ $(APP): $(APP_SRCS) $(wildcard src/app/*.h) $(wildcard assets/fonts/*.ttf) asset
 	@mkdir -p $(@D)
 	$(CC) $(APP_CFLAGS) -o $@ $(APP_SRCS) $(APP_LIBS)
 
-$(LAUNCHER): $(LAUNCHER_SRCS) $(wildcard src/launcher/core/*.h) $(APP) $(ICON) assets/logo.svg
+$(LAUNCHER): $(LAUNCHER_SRCS) $(wildcard src/launcher/core/*.h) $(APP) $(ICON) assets/logo.svg assets/dashboard/pic0.dds
 	$(CC) $(LAUNCHER_CFLAGS) -o $@ $(LAUNCHER_SRCS) $(LAUNCHER_LIBS)
 
 clean:

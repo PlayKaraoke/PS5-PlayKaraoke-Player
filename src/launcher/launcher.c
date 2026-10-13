@@ -45,6 +45,9 @@
 #ifndef LOGO_SVG_FILE
 #error "LOGO_SVG_FILE não definido"
 #endif
+#ifndef BACKGROUND_FILE
+#error "BACKGROUND_FILE não definido"
+#endif
 
 #define LAUNCHER_PORT 9050
 #define LAUNCHER_NAME "pk-launcher.elf"
@@ -70,6 +73,8 @@
 EMBED(embedded_app, APP_ELF_FILE);
 EMBED(embedded_icon, ICON_FILE);
 EMBED(embedded_logo_svg, LOGO_SVG_FILE);
+/* Fundo da dashboard: 3840x2160, DDS BC7 (DX10), sem mipmaps. */
+EMBED(embedded_background, BACKGROUND_FILE);
 
 /* Ícone na seção Mídia (65536). Abrir o ícone só chama o deeplinkUri. */
 static const char tile_param_json[] =
@@ -344,6 +349,10 @@ static int install_tile(void) {
   if (write_file(TILE_DIR "/sce_sys/param.json", tile_param_json, sizeof tile_param_json - 1, 0644) ||
       write_file(TILE_DIR "/sce_sys/icon0.png", embedded_icon, embedded_icon_size, 0644))
     return -1;
+  /* Fundo com o app selecionado (pic0) e enquanto ele abre (pic1). */
+  if (write_file(TILE_DIR "/sce_sys/pic0.dds", embedded_background, embedded_background_size, 0644) ||
+      write_file(TILE_DIR "/sce_sys/pic1.dds", embedded_background, embedded_background_size, 0644))
+    log_msg("aviso: fundo da dashboard nao foi gravado");
 
   /* AppInstUtil só aceita processos com o authid do instalador. */
   pid_t me = getpid();
