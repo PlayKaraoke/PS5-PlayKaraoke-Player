@@ -71,15 +71,20 @@
 
 ## Installation & Quick Start
 
+### Option 1 — Native PS5 App (`PLKR00001.zip`, Recommended)
+Runs directly from the PS5 Media dashboard with **no browser popup** via ShadowMountPlus / ProsperoStore:
+
+1. Download `PLKR00001.zip` from the [latest release](https://github.com/PlayKaraoke/PS5-PlayKaraoke-Player/releases/latest) (or install directly from **ProsperoStore** / `homebrew.page`).
+2. Extract and copy the `PLKR00001/` folder to `/data/homebrew/PLKR00001/` on your PS5.
+3. Let **ShadowMountPlus** register the title, then open **PlayKaraoke** in the **Media** section of the home screen.
+
+### Option 2 — Standalone Payload (`playkaraoke.elf`)
 1. Download `playkaraoke.elf` from the [latest release](https://github.com/PlayKaraoke/PS5-PlayKaraoke-Player/releases/latest).
 2. Send it to the PS5 `elfldr` (port `9021`):
    ```bash
    nc -q0 <PS5-IP> 9021 < playkaraoke.elf
    ```
-3. Open **PlayKaraoke** in the **Media** section of the PS5 home screen.
-4. When the PS5 quick-guide browser window appears on top, press **○** once to close it and use PlayKaraoke.
-
-> **Re-inject after every jailbreak.** Sending a newer `playkaraoke.elf` updates the app and tile in place without duplicating icons or wiping `/data/playkaraoke/songs/`.
+3. Open **PlayKaraoke** in the **Media** section (press **○** once to close the launcher browser overlay).
 
 ### Adding Songs
 
@@ -161,6 +166,7 @@ PlayKaraoke for PS5 is licensed under **GPL-3.0-or-later** (see [LICENSE](LICENS
 | Component | License | Notes |
 |---|---|---|
 | BigApp loader core (`src/launcher/core`) from [ps5-payload-websrv](https://github.com/ps5-payload-dev/websrv) by John Törnblom | GPL-3.0-or-later | Commit `7748df9`; adapted for `PLKR00001` Media tile |
+| Native PS5 FSELF builder & clean-room `libc.prx` from [ProsperoTV / ps5-native-app-boilerplate](https://github.com/blackbearreloaded/ProsperoTV) by BlackBearReloaded | GPL-3.0-or-later | Used to package `PLKR00001/eboot.bin` |
 | [qrcodegen](https://github.com/nayuki/QR-Code-generator) by Project Nayuki (`vendor/qrcodegen`) | MIT | v1.8.0 |
 | [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) | GPL-3.0-or-later | Toolchain & runtime |
 | SDL2, SDL2_ttf, SDL2_image, SDL2_gfx | zlib | Via PacBrew |
