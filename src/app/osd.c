@@ -71,20 +71,20 @@ int osd_changed(osd_t *o) {
  * (o desenho da barra fica com quem chama). Devolve o retângulo da barra. */
 static SDL_Rect draw_panel(osd_t *o, const char *title, const char *value) {
   ui_t *ui = o->ui;
-  const int w = 640, h = 150, x = (UI_W - w) / 2, y = 64;
-  ui_box(ui, x, y, w, h, 24, 0x000000, 200);
-  ui_text(ui, FONT_HEADING, title, x + 40, y + 22, UI_TEXT, ALIGN_LEFT, 0);
-  ui_text(ui, FONT_HEADING, value, x + w - 40, y + 22, UI_TEXT, ALIGN_RIGHT, 0);
-  SDL_Rect bar = {x + 40, y + 104, w - 80, 16};
+  const int w = 640, h = 148, x = (UI_W - w) / 2, y = 56;
+  ui_box(ui, x, y, w, h, 22, UI_POP, 235);
+  ui_text(ui, FONT_HEADING, title, x + 36, y + 22, UI_TEXT, ALIGN_LEFT, 0);
+  ui_text(ui, FONT_HEADING, value, x + w - 36, y + 22, UI_ACCENT, ALIGN_RIGHT, 0);
+  SDL_Rect bar = {x + 36, y + 102, w - 72, 16};
   return bar;
 }
 
 static void draw_fill_bar(osd_t *o, SDL_Rect bar, double fraction) {
   if (fraction < 0) fraction = 0;
   if (fraction > 1) fraction = 1;
-  ui_box(o->ui, bar.x, bar.y, bar.w, bar.h, 8, 0xFFFFFF, 60);
+  ui_box(o->ui, bar.x, bar.y, bar.w, bar.h, 8, UI_FIELD, 255);
   int fill = (int)(bar.w * fraction);
-  if (fill > bar.h) ui_box(o->ui, bar.x, bar.y, fill, bar.h, 8, UI_BRAND, 255);
+  if (fill > bar.h) ui_gradient_box(o->ui, bar.x, bar.y, fill, bar.h, 8);
 }
 
 static void format_time(char *out, size_t size, double sec) {
@@ -116,42 +116,47 @@ static void draw_pitch(osd_t *o) {
   SDL_Rect bar = draw_panel(o, TR("Key", "Tom"), value);
 
   ui_t *ui = o->ui;
-  ui_box(ui, bar.x, bar.y, bar.w, bar.h, 8, 0xFFFFFF, 60);
+  ui_box(ui, bar.x, bar.y, bar.w, bar.h, 8, UI_FIELD, 255);
   int center = bar.x + bar.w / 2;
   int pos = center + bar.w / 2 * o->semitones / 12;
   if (pos != center) {
     int left = pos < center ? pos : center;
-    ui_rect(ui, left, bar.y, (pos < center ? center - pos : pos - center), bar.h, UI_BRAND);
+    ui_gradient_rect(ui, left, bar.y, (pos < center ? center - pos : pos - center), bar.h);
   }
   ui_rect(ui, center - 2, bar.y - 6, 4, bar.h + 12, UI_TEXT);
 }
 
 static void draw_paused(osd_t *o) {
   ui_t *ui = o->ui;
-  const int w = 640, h = 220, x = (UI_W - w) / 2, y = (UI_H - h) / 2;
-  ui_box(ui, x, y, w, h, 28, 0x000000, 200);
+  const int w = 640, h = 230, x = (UI_W - w) / 2, y = (UI_H - h) / 2;
+  ui_box(ui, x, y, w, h, 26, UI_POP, 238);
   ui_text(ui, FONT_TITLE, TR("Paused", "Pausado"), UI_W / 2, y + 36, UI_TEXT, ALIGN_CENTER, 0);
-  int hint_w = 40 + 12 + ui_text_width(ui, FONT_SMALL, TR("Resume", "Continuar"));
-  ui_hint(ui, UI_W / 2 - hint_w / 2, y + 150, BTN_CROSS, TR("Resume", "Continuar"));
+  int w1 = ui_hint_width(ui, BTN_CROSS, TR("Resume", "Continuar"));
+  int w2 = ui_hint_width(ui, BTN_CIRCLE, TR("Next song", "Próxima"));
+  int total = w1 + 48 + w2;
+  int hx = UI_W / 2 - total / 2;
+  ui_hint(ui, hx, y + 150, BTN_CROSS, TR("Resume", "Continuar"));
+  ui_hint(ui, hx + w1 + 48, y + 150, BTN_CIRCLE, TR("Next song", "Próxima"));
 }
 
 /* Barra de comandos no rodapé, por cima da música. */
 static void draw_controls(osd_t *o) {
   ui_t *ui = o->ui;
   static const ui_button_t b[] = {BTN_CROSS, BTN_CIRCLE, BTN_OPTIONS, BTN_DPAD, BTN_L1R1, BTN_RSTICK};
-  const char *const l[] = {TR("Pause", "Pausar"), TR("Next song", "Próxima música"), TR("Queue", "Fila"), "Volume", TR("Key", "Tom"), TR("Back/forward 10 s", "Voltar/avançar 10 s")};
-  const int n = 6, gap = 44, h = 84;
+  const char *const l[] = {TR("Pause", "Pausar"), TR("Next", "Próxima"), TR("Queue", "Fila"), "Volume", TR("Key", "Tom"), TR("±10s", "±10s")};
+  const int n = 6, gap = 40, h = 80;
   int widths[6], total = 0;
   for (int i = 0; i < n; i++) {
     widths[i] = ui_hint_width(ui, b[i], l[i]);
     total += widths[i] + (i ? gap : 0);
   }
-  /* Centralizada no espaço à esquerda do QR code do canto (240 px). */
-  int x = (UI_W - 240 - total) / 2 - 40, y = UI_H - h - 40;
-  ui_box(ui, x, y, total + 80, h, 26, 0x000000, 200);
-  x += 40;
+  /* Centralizada no espaço à esquerda do QR code do canto (240 px), translúcida. */
+  int x = (UI_W - 240 - total) / 2 - 36, y = UI_H - h - 36;
+  if (x < 24) x = 24;
+  ui_box(ui, x, y, total + 72, h, 22, UI_POP, 185);
+  x += 36;
   for (int i = 0; i < n; i++) {
-    ui_hint(ui, x, y + 24, b[i], l[i]);
+    ui_hint(ui, x, y + 22, b[i], l[i]);
     x += widths[i] + gap;
   }
 }

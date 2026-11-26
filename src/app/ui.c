@@ -48,10 +48,21 @@ int ui_init(ui_t *ui, SDL_Window *win) {
     if (ui->logo) SDL_SetSurfaceBlendMode(ui->logo, SDL_BLENDMODE_BLEND);
   }
   if (!ui->logo) printf("[ui] logo indisponivel: %s\n", IMG_GetError());
+
+  SDL_RWops *irw = SDL_RWFromConstMem(icons_dualsense_png, (int)icons_dualsense_png_size);
+  SDL_Surface *icons = irw ? IMG_LoadPNG_RW(irw) : NULL;
+  if (irw) SDL_RWclose(irw);
+  if (icons) {
+    ui->icons = SDL_ConvertSurfaceFormat(icons, SDL_PIXELFORMAT_ARGB8888, 0);
+    SDL_FreeSurface(icons);
+    if (ui->icons) SDL_SetSurfaceBlendMode(ui->icons, SDL_BLENDMODE_BLEND);
+  }
+  if (!ui->icons) printf("[ui] icones DualSense indisponiveis: %s\n", IMG_GetError());
   return ui->ren ? 0 : -1;
 }
 
 void ui_free(ui_t *ui) {
+  if (ui->icons) SDL_FreeSurface(ui->icons);
   if (ui->logo) SDL_FreeSurface(ui->logo);
   for (int i = 0; i < FONT_COUNT; i++)
     if (ui->font[i]) TTF_CloseFont(ui->font[i]);
@@ -74,9 +85,61 @@ void ui_rect(ui_t *ui, int x, int y, int w, int h, Uint32 rgb) {
 }
 
 void ui_box(ui_t *ui, int x, int y, int w, int h, int radius, Uint32 rgb, Uint8 alpha) {
+  if (w <= 0 || h <= 0) return;
+  if (radius > h / 2) radius = h / 2;
+  if (radius > w / 2) radius = w / 2;
   roundedBoxRGBA(ui->ren, (Sint16)x, (Sint16)y, (Sint16)(x + w - 1), (Sint16)(y + h - 1), (Sint16)radius,
                  (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, alpha);
   SDL_RenderFlush(ui->ren);
+}
+
+void ui_card(ui_t *ui, int x, int y, int w, int h, int radius) {
+  ui_box(ui, x, y, w, h, radius, UI_PANEL, 255);
+  roundedRectangleRGBA(ui->ren, (Sint16)x, (Sint16)y, (Sint16)(x + w - 1), (Sint16)(y + h - 1), (Sint16)radius,
+                       (UI_BORDER >> 16) & 0xFF, (UI_BORDER >> 8) & 0xFF, UI_BORDER & 0xFF, 255);
+  SDL_RenderFlush(ui->ren);
+}
+
+static Uint32 lerp_rgb(Uint32 a, Uint32 b, int num, int den) {
+  if (den <= 0) return a;
+  int r = ((int)((a >> 16) & 0xFF) * (den - num) + (int)((b >> 16) & 0xFF) * num) / den;
+  int g = ((int)((a >> 8) & 0xFF) * (den - num) + (int)((b >> 8) & 0xFF) * num) / den;
+  int bl = ((int)(a & 0xFF) * (den - num) + (int)(b & 0xFF) * num) / den;
+  return (Uint32)((r << 16) | (g << 8) | bl);
+}
+
+void ui_gradient_rect(ui_t *ui, int x, int y, int w, int h) {
+  if (w <= 0 || h <= 0) return;
+  int step = w > 120 ? 4 : 2;
+  for (int i = 0; i < w; i += step) {
+    int sw = i + step > w ? w - i : step;
+    Uint32 c = lerp_rgb(UI_GRAD_FROM, UI_GRAD_TO, i, w);
+    SDL_Rect r = {x + i, y, sw, h};
+    SDL_FillRect(ui->screen, &r, map(ui, c));
+  }
+}
+
+void ui_gradient_box(ui_t *ui, int x, int y, int w, int h, int radius) {
+  if (w <= 0 || h <= 0) return;
+  if (radius > h / 2) radius = h / 2;
+  if (radius > w / 2) radius = w / 2;
+  /* Pontas arredondadas com as cores extremas + corpo em degradê. */
+  if (radius > 0) {
+    ui_box(ui, x, y, radius * 2 + 2, h, radius, UI_GRAD_FROM, 255);
+    ui_box(ui, x + w - radius * 2 - 2, y, radius * 2 + 2, h, radius, UI_GRAD_TO, 255);
+    if (w > radius * 2) ui_gradient_rect(ui, x + radius, y, w - radius * 2, h);
+  } else {
+    ui_gradient_rect(ui, x, y, w, h);
+  }
+}
+
+int ui_badge(ui_t *ui, int x, int y, const char *text, Uint32 bg, Uint32 fg, int align_right) {
+  int tw = ui_text_width(ui, FONT_TINY, text);
+  int w = tw + 24, h = 34;
+  int bx = align_right ? x - w : x;
+  ui_box(ui, bx, y, w, h, h / 2, bg, 255);
+  ui_text(ui, FONT_TINY, text, bx + w / 2, y + 5, fg, ALIGN_CENTER, 0);
+  return w;
 }
 
 int ui_text_width(ui_t *ui, ui_font_t font, const char *text) {
@@ -123,85 +186,65 @@ int ui_text(ui_t *ui, ui_font_t font, const char *text, int x, int y, Uint32 rgb
   return w;
 }
 
-#define BUTTON_SIZE 40
-
-/* Botões que são uma "pílula" com texto em vez de um símbolo redondo. */
-static const char *pill_text(ui_button_t button) {
-  switch (button) {
-    case BTN_OPTIONS: return "OPTIONS";
-    case BTN_L1R1: return "L1  R1";
-    case BTN_L1: return "L1";
-    case BTN_R1: return "R1";
-    case BTN_RSTICK: return "R \xE2\x86\x90 \xE2\x86\x92"; /* "R ← →" */
-    default: return NULL;
-  }
-}
+#define ICON_SLOT_W 64
+#define ICON_SLOT_H 48
 
 static int button_width(ui_t *ui, ui_button_t button) {
-  const char *pill = pill_text(button);
-  return pill ? ui_text_width(ui, FONT_SMALL, pill) + 28 : BUTTON_SIZE;
+  (void)ui;
+  switch (button) {
+    case BTN_L1R1: return 62;
+    case BTN_RSTICK: return 56;
+    case BTN_L1:
+    case BTN_R1:
+    case BTN_OPTIONS:
+    case BTN_TOUCH: return 48;
+    default: return 42;
+  }
 }
 
 int ui_hint_width(ui_t *ui, ui_button_t button, const char *label) {
-  return button_width(ui, button) + 12 + ui_text_width(ui, FONT_SMALL, label);
+  return button_width(ui, button) + (label[0] ? 10 + ui_text_width(ui, FONT_SMALL, label) : 0);
 }
 
-/* Botão redondo com o símbolo do PlayStation desenhado em linhas. */
+/* Desenha o ícone do DualSense a partir do spritesheet (assets/icons/dualsense.png). */
 static int draw_button(ui_t *ui, int x, int y, ui_button_t button) {
-  const int size = BUTTON_SIZE, r = size / 2, cx = x + r, cy = y + r;
-  SDL_Renderer *ren = ui->ren;
-  const char *pill = pill_text(button);
-  if (pill) {
-    int w = button_width(ui, button);
-    roundedBoxRGBA(ren, x, y + 4, x + w, y + size - 4, 14, 0x3A, 0x33, 0x48, 255);
-    SDL_RenderFlush(ren);
-    ui_text(ui, FONT_SMALL, pill, x + 14, y + 4, UI_TEXT, ALIGN_LEFT, 0);
+  int w = button_width(ui, button);
+  if (ui->icons) {
+    SDL_Rect src = {(int)button * ICON_SLOT_W + (ICON_SLOT_W - w) / 2, 0, w, ICON_SLOT_H};
+    SDL_Rect dst = {x, y - 5, w, ICON_SLOT_H};
+    SDL_BlitSurface(ui->icons, &src, ui->screen, &dst);
     return w;
   }
-  filledCircleRGBA(ren, cx, cy, r, 0x2A, 0x24, 0x36, 255);
-  switch (button) {
-    case BTN_CROSS:
-      thickLineRGBA(ren, cx - 9, cy - 9, cx + 9, cy + 9, 4, 0x7C, 0xB2, 0xE8, 255);
-      thickLineRGBA(ren, cx - 9, cy + 9, cx + 9, cy - 9, 4, 0x7C, 0xB2, 0xE8, 255);
-      break;
-    case BTN_CIRCLE:
-      aacircleRGBA(ren, cx, cy, 10, 0xFF, 0x66, 0x6E, 255);
-      aacircleRGBA(ren, cx, cy, 9, 0xFF, 0x66, 0x6E, 255);
-      aacircleRGBA(ren, cx, cy, 11, 0xFF, 0x66, 0x6E, 255);
-      break;
-    case BTN_TRIANGLE:
-      thickLineRGBA(ren, cx, cy - 11, cx - 11, cy + 8, 3, 0x40, 0xE2, 0xA0, 255);
-      thickLineRGBA(ren, cx - 11, cy + 8, cx + 11, cy + 8, 3, 0x40, 0xE2, 0xA0, 255);
-      thickLineRGBA(ren, cx + 11, cy + 8, cx, cy - 11, 3, 0x40, 0xE2, 0xA0, 255);
-      break;
-    case BTN_SQUARE:
-      rectangleRGBA(ren, cx - 9, cy - 9, cx + 9, cy + 9, 0xFF, 0x69, 0xF8, 255);
-      rectangleRGBA(ren, cx - 8, cy - 8, cx + 8, cy + 8, 0xFF, 0x69, 0xF8, 255);
-      rectangleRGBA(ren, cx - 10, cy - 10, cx + 10, cy + 10, 0xFF, 0x69, 0xF8, 255);
-      break;
-    case BTN_DPAD:
-      boxRGBA(ren, cx - 4, cy - 12, cx + 4, cy + 12, 0xD0, 0xD0, 0xD0, 255);
-      boxRGBA(ren, cx - 12, cy - 4, cx + 12, cy + 4, 0xD0, 0xD0, 0xD0, 255);
-      break;
-    default:
-      break;
-  }
-  SDL_RenderFlush(ren);
-  return size;
+  /* Fallback caso o spritesheet falhe. */
+  static const char *const names[] = {"X", "O", "/\\", "[]", "+", "L1", "R1", "L1/R1", "R", "OPT", "PAD"};
+  ui_box(ui, x, y, w, 36, 10, UI_PANEL_HI, 255);
+  ui_text(ui, FONT_TINY, names[button], x + w / 2, y + 6, UI_TEXT, ALIGN_CENTER, 0);
+  return w;
 }
 
 int ui_hint(ui_t *ui, int x, int y, ui_button_t button, const char *label) {
-  int w = draw_button(ui, x, y - 2, button);
-  w += 12;
-  w += ui_text(ui, FONT_SMALL, label, x + w, y, UI_TEXT_2, ALIGN_LEFT, 0);
+  int w = draw_button(ui, x, y, button);
+  if (label[0]) {
+    w += 10;
+    w += ui_text(ui, FONT_SMALL, label, x + w, y + 2, UI_TEXT_2, ALIGN_LEFT, 0);
+  }
+  return w;
+}
+
+int ui_hint_bright(ui_t *ui, int x, int y, ui_button_t button, const char *label) {
+  int w = draw_button(ui, x, y, button);
+  if (label[0]) {
+    w += 10;
+    w += ui_text(ui, FONT_BODY_B, label, x + w, y - 2, 0xFFFFFF, ALIGN_LEFT, 0);
+  }
   return w;
 }
 
 void ui_footer(ui_t *ui, const ui_button_t *buttons, const char *const *labels, int count) {
-  const int y = UI_H - 84;
-  ui_rect(ui, 0, y - 22, UI_W, 1, 0x2A2436);
+  const int y = UI_H - 80;
+  ui_rect(ui, 0, y - 24, UI_W, 1, UI_BORDER);
   int x = 80;
-  for (int i = 0; i < count; i++) x += ui_hint(ui, x, y, buttons[i], labels[i]) + 48;
+  for (int i = 0; i < count; i++) x += ui_hint(ui, x, y, buttons[i], labels[i]) + 44;
 }
 
 void ui_flag(ui_t *ui, int lang, int x, int y, int h) {

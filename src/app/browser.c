@@ -12,6 +12,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 
+#define SONGS_DIR "/data/playkaraoke/songs"
 #define TEST_DIR "/data/playkaraoke/test"
 #define MIN_DISK_GB 1.0
 
@@ -82,11 +83,21 @@ void browser_open_root(browser_t *b) {
     snprintf(e->path, sizeof e->path, "/mnt/ext0");
     e->is_dir = 1;
   }
-  bentry_t *e = add_entry(b);
-  if (!e) return;
-  snprintf(e->label, sizeof e->label, TR("PlayKaraoke test folder", "Pasta de teste do PlayKaraoke"));
-  snprintf(e->path, sizeof e->path, "%s", TEST_DIR);
-  e->is_dir = 1;
+  struct stat st;
+  if (stat(SONGS_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
+    bentry_t *e = add_entry(b);
+    if (!e) return;
+    snprintf(e->label, sizeof e->label, TR("PS5 Internal", "Armazenamento interno"));
+    snprintf(e->path, sizeof e->path, "%s", SONGS_DIR);
+    e->is_dir = 1;
+  }
+  if (has_entries(TEST_DIR)) {
+    bentry_t *e = add_entry(b);
+    if (!e) return;
+    snprintf(e->label, sizeof e->label, TR("PlayKaraoke test folder", "Pasta de teste do PlayKaraoke"));
+    snprintf(e->path, sizeof e->path, "%s", TEST_DIR);
+    e->is_dir = 1;
+  }
 }
 
 static int compare_entries(const void *a, const void *b) {

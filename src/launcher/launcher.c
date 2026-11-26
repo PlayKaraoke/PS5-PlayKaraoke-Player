@@ -186,16 +186,9 @@ static const char busy_body_pt[] =
   "<div class=\"box\"><span class=\"b o\">&#9675;</span>Aperte <b>&#9675;</b> para fechar esta janela.</div>"
   "</div></body></html>";
 
-/* Idioma escolhido no app (config.txt, "lang=pt" ou "lang=en"). */
+/* Página do navegador do ícone sempre em inglês por padrão (PLK 2027). */
 static int lang_is_pt(void) {
-  FILE *f = fopen(DATA_DIR "/config.txt", "r");
-  if (!f) return 0;
-  char line[64];
-  int pt = 0;
-  while (fgets(line, sizeof line, f))
-    if (strncmp(line, "lang=pt", 7) == 0) pt = 1;
-  fclose(f);
-  return pt;
+  return 0;
 }
 
 typedef struct notify_request {
@@ -471,7 +464,7 @@ static void serve(int listener) {
 
     if (running > 0) {
       log_msg("ja existe um app aberto (id 0x%x): nao abro o PlayKaraoke", (unsigned)running);
-      notify("Feche o jogo ou app aberto antes de abrir o PlayKaraoke");
+      notify("Close the running game or app before opening PlayKaraoke");
       continue;
     }
     usleep(LAUNCH_DELAY_US);
@@ -506,7 +499,6 @@ int main(void) {
   }
 
   log_msg("pronto: abra o PlayKaraoke em Midia");
-  notify("PlayKaraoke pronto: abra pelo icone em Midia");
 
   /* Solta a conexão do elfldr: daqui em diante a saída vai só para o log. */
   int devnull = open("/dev/null", O_RDWR);

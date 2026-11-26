@@ -1,182 +1,172 @@
 <p align="center">
-  <img src="assets/icon0.png" alt="PlayKaraoke" width="160"/>
+  <img src="assets/icon0.png" alt="PlayKaraoke" width="140"/>
 </p>
 
 <h1 align="center">PlayKaraoke for PS5</h1>
 
 <p align="center">
-  A karaoke player for jailbroken PS5 consoles: <b>CDG (MP3+G)</b> and <b>MP4</b>, real-time key change,
-  a singer rotation, and guests requesting songs <b>from their phones</b> with a QR code on the TV.<br/>
-  Homebrew version of the <a href="https://github.com/PlayKaraoke/PlayKaraokeWebPlayer">PlayKaraoke Web Player</a>.
+  <strong>A native, 100% offline karaoke player for jailbroken PlayStation 5 consoles.</strong><br/>
+  CDG (MP3+G) and 4K MP4 playback · Real-time ±12 semitone pitch shifting · Fair singer rotation · Mobile guest requests via QR code.
 </p>
-
-> ⚠️ **Experimental beta — use at your own risk.** PlayKaraoke runs on a jailbroken console and writes to
-> system areas (it registers a dashboard tile and an app host). It has no affiliation with Sony.
-> Back up your saves and **close any running game before opening PlayKaraoke**.
 
 <p align="center">
-  <img src="docs/screenshots/tv-home.png" alt="Home screen with the QR code" width="49%"/>
-  <img src="docs/screenshots/tv-playing.png" alt="CDG karaoke playing" width="49%"/>
+  <a href="https://github.com/PlayKaraoke/PS5-PlayKaraoke-Player/releases/latest"><img src="https://img.shields.io/github/v/release/PlayKaraoke/PS5-PlayKaraoke-Player?include_prereleases&style=flat-square&color=8655f6" alt="Latest Release"/></a>
+  <img src="https://img.shields.io/badge/PS5_FW-13.60_tested-e2177b?style=flat-square" alt="PS5 FW 13.60"/>
+  <img src="https://img.shields.io/badge/language-C11_%2F_SDL2-141420?style=flat-square" alt="C11 / SDL2"/>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-2a2436?style=flat-square" alt="GPL-3.0-or-later"/></a>
 </p>
 
-> 💾 **Your songs must be on an external drive.** In this version, PlayKaraoke only finds songs on a
-> **USB hard drive or pen drive** plugged into the PS5 (formatted as **exFAT** or FAT32). Songs on the
-> PS5 internal storage are not listed.
+<p align="center">
+  <img src="docs/screenshots/tv-home.jpg" alt="PlayKaraoke PS5 Home Screen" width="49%"/>
+  <img src="docs/screenshots/tv-controls.jpg" alt="PlayKaraoke PS5 Playback with Touchpad Controls" width="49%"/>
+</p>
 
-> 🎵 **No music included.** This project is only a player. It does not include, distribute or point to
-> karaoke files, artist names or songs. Only use files you have the right to use.
+> [!WARNING]
+> **Experimental homebrew — use at your own risk.** PlayKaraoke runs on a jailbroken PS5 and registers a Media dashboard tile (`/user/app/PLKR00001`). It has no affiliation with Sony. Back up your saves and **close any running game before opening PlayKaraoke** (PlayKaraoke also refuses to launch if another game/app is running).
 
-## Features
+> [!NOTE]
+> **No music included.** PlayKaraoke is strictly a local media player. It does not bundle, distribute, or stream copyrighted karaoke files. Only use karaoke files you have the right to use.
 
-- **Formats:** `.zip` with `.cdg` + audio (MP3+G) and `.mp4` video (up to 4K)
-- **Key change:** ±12 semitones in real time, without changing speed, for CDG and MP4
-- **Phones:** guests scan the QR code, type their name, search the library and request songs; they see
-  how many songs are left until their turn and can change the key or finish their song
-- **Singer rotation:** one song per singer per round, in order of arrival, up to 5 songs each
-- **Search:** accent-insensitive search by artist, title or code, CDG/MP4 filter, alphabetical results
-- **DualSense only mode:** you can run a whole night with just the controller
-- **Languages:** English and Portuguese (Brazil)
+---
+
+## Highlights
+
+- **100% Local & Offline:** No internet connection required. Load songs from a **USB drive (exFAT / FAT32)** or copy them directly to the PS5 internal storage at **`/data/playkaraoke/songs/`** (via FTP). Both sources are indexed and merged seamlessly into search.
+- **CDG (MP3+G) & MP4 Playback:** Plays `.zip` archives (`.cdg` + `.mp3`/`.wav`/`.ogg`/`.m4a`) with bicubic upscaling and `.mp4` videos up to 4K via FFmpeg 7.1.
+- **Real-Time Key Change (±12 Semitones):** Adjust pitch live without changing tempo on both CDG and MP4 tracks, from the DualSense or the singer's phone.
+- **Phone Guest Interface:** Guests scan the on-screen QR code on the same Wi-Fi to browse the library, request songs, check how many songs remain until their turn, adjust their key, or finish their song live.
+- **Fair Singer Rotation:** One song per singer per round, in order of arrival, up to 5 queued songs per guest.
+- **PLK 2027 Dark UI:** Designed for 1080p living-room TVs with high-contrast cards, DualSense button prompts, translucent playback OSDs, and a matching mobile web interface.
+- **Bilingual:** English (default) and Portuguese (`L1` / `R1` on the home screen).
+
+---
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/tv-search.png" alt="Search" width="49%"/>
-  <img src="docs/screenshots/tv-queue.png" alt="Queue with the singer rotation" width="49%"/>
-  <img src="docs/screenshots/tv-countdown.png" alt="Countdown to the next singer" width="49%"/>
-  <img src="docs/screenshots/tv-key.png" alt="Key change" width="49%"/>
+  <img src="docs/screenshots/ps5-dashboard.jpg" alt="PS5 Media Dashboard Tile" width="49%"/>
+  <img src="docs/screenshots/tv-search.jpg" alt="Search Songs" width="49%"/>
+  <img src="docs/screenshots/tv-countdown.jpg" alt="Countdown to Next Singer" width="49%"/>
+  <img src="docs/screenshots/tv-key.jpg" alt="Real-time Key Change OSD" width="49%"/>
+  <img src="docs/screenshots/tv-paused.jpg" alt="Paused OSD" width="49%"/>
+  <img src="docs/screenshots/tv-controls.jpg" alt="Touchpad Controls Bar" width="49%"/>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/phone-search.png" alt="Phone: search" width="30%"/>
-  <img src="docs/screenshots/phone-my-turn.png" alt="Phone: my turn" width="30%"/>
-  <img src="docs/screenshots/phone-singing.png" alt="Phone: singing now" width="30%"/>
+  <img src="docs/screenshots/phone-search.jpg" alt="Mobile: Search" width="31%"/>
+  <img src="docs/screenshots/phone-my-turn.png" alt="Mobile: My Turn & Rotation" width="31%"/>
 </p>
 
-<p align="center"><sub>Screenshots use the made-up demo songs from <code>tools/make-demo-songs.py</code>.</sub></p>
+---
 
 ## Requirements
 
-- A jailbroken PS5 with an ELF loader (**elfldr**, port 9021). **Tested on firmware 13.60.** Earlier
-  firmwares that run elfldr should work but are untested.
-- **A USB hard drive or pen drive with your karaoke files**, formatted as **exFAT** (or FAT32). This is
-  where PlayKaraoke looks for songs; NTFS and APFS drives are not supported by the PS5. Any folder layout
-  works: the whole drive is scanned.
-- Phones on the same Wi-Fi network as the PS5 (optional).
+| Requirement | Details |
+|---|---|
+| **Console** | Jailbroken PS5 with **elfldr** (port `9021`). Tested on **firmware 13.60**; earlier firmwares running elfldr should work. |
+| **Songs** | **USB drive** formatted as **exFAT** or **FAT32** (NTFS/APFS are not supported by PS5), **or** internal storage at `/data/playkaraoke/songs/` via FTP. |
+| **Network** | Optional. Phones must be on the **same local Wi-Fi** as the PS5 (no internet access needed). |
 
-## Installation
+---
 
-1. Download `playkaraoke.elf` from the [latest release](../../releases/latest).
-2. Send it to the PS5 elfldr (port 9021), the same way you load any payload. For example, from a computer:
-   `nc -q0 <PS5-IP> 9021 < playkaraoke.elf` (or use your favorite payload sender).
-3. A notification says PlayKaraoke is ready. Open **PlayKaraoke** in the **Media** section of the home screen.
+## Installation & Quick Start
 
-The payload installs everything by itself (`/data/playkaraoke` and the Media tile) and stays resident to
-open the app. **Send it again after every jailbreak.** Sending a newer version updates it in place.
+1. Download `playkaraoke.elf` from the [latest release](https://github.com/PlayKaraoke/PS5-PlayKaraoke-Player/releases/latest).
+2. Send it to the PS5 `elfldr` (port `9021`):
+   ```bash
+   nc -q0 <PS5-IP> 9021 < playkaraoke.elf
+   ```
+3. Open **PlayKaraoke** in the **Media** section of the PS5 home screen.
+4. When the PS5 quick-guide browser window appears on top, press **○** once to close it and use PlayKaraoke.
 
-When the app opens, the PS5 web browser also shows a quick guide on top of it: press **○** to close it.
+> **Re-inject after every jailbreak.** Sending a newer `playkaraoke.elf` updates the app and tile in place without duplicating icons or wiping `/data/playkaraoke/songs/`.
 
-## How to use
+### Adding Songs
 
-1. Plug the USB drive with your songs **before** opening the app. The first time, PlayKaraoke reads the drive in the
-   background and builds the library (it is updated every time the app opens).
-2. On the home screen, guests scan the **QR code** to request songs from their phones. You can also
-   search with the controller (**△**).
-3. Press **✕ Start** (or **▢ Start show** in the search) to start. A 10-second countdown shows who sings next.
-   After the show starts, new requests start automatically when the queue is idle.
+- **Option A — USB Drive:** Plug in an exFAT/FAT32 USB drive before opening the app. Any folder layout works; PlayKaraoke scans recursively in the background.
+- **Option B — PS5 Internal Storage:** Connect to your PS5 over FTP (port `2121`) and upload `.zip` (CDG) or `.mp4` files to:
+  ```text
+  /data/playkaraoke/songs/
+  ```
 
-### Phones and the PS5 address
+### File Naming Convention
 
-Every PS5 has its own address (IP) on your network, so there is nothing to configure: when PlayKaraoke
-opens, it finds its own address and shows it under the QR code (for example `http://192.168.0.25:8000`).
-Guests just scan the code, or type that address in the phone browser.
+Metadata is parsed automatically from filenames (`Code - Artist - Title`):
 
-- The phones must be on the **same Wi-Fi** as the PS5 (no internet needed).
-- Each guest types a name once; the phone remembers it. One song per singer per round, up to 5 each.
-- On the phone: search and request songs, see how many songs are left until your turn, cancel your songs,
-  change their key and, when it is your turn, change the key live or finish your song.
-- During a song, a small QR code stays in the bottom-right corner so new guests can join.
-- If the address changes (the router gives the PS5 a new one), the QR code updates the next time the app opens.
-
-### Controller
-
-| Where | Button | Action |
-|---|---|---|
-| Home | △ / ▢ / ✕ / ○ | Search songs / Folders / Start / Quit |
-| Home | R1 | Language (🇺🇸 English / 🇧🇷 Português) |
-| Search | ✕ | Add to / remove from the queue |
-| Search | ▢ | Start the show |
-| Search | △ / R1 | New search (PS5 keyboard) / CDG, MP4 or both |
-| Anywhere | OPTIONS | Queue: see the rotation, move (✕) or remove (△) songs |
-| Countdown | ✕ / ○ | Start now / Skip this turn |
-| Playing | ✕ / ○ | Pause / End the song |
-| Playing | ↑ ↓ or left stick | Volume |
-| Playing | L1 / R1 | Key −1 / +1 |
-| Playing | Right stick ← → | Back / forward 10 seconds |
-| Playing | Touchpad | Show the controls bar |
-
-### File names
-
-Song info is read from the file name: `Code - Artist - Title`
-
-```
+```text
 SC8123-05 - Artist Name - Song Title.zip   → code, artist, title
 Artist Name - Song Title.mp4                → artist, title
 ```
 
-A `.zip` must contain one `.cdg` and its audio (`.mp3`, `.wav`, `.ogg` or `.m4a`).
+A `.zip` file must contain one `.cdg` file and its matching audio track (`.mp3`, `.wav`, `.ogg`, or `.m4a`).
 
-## FAQ
+---
 
-**The drive does not show up.** Check that it is exFAT or FAT32 and connected before opening the app.
-Drives formatted on a Mac have a small hidden EFI partition; PlayKaraoke hides it and shows the main one.
+## DualSense Controls
 
-**A browser window stays on top of the app.** That is how the dashboard tile opens homebrew. Press ○ once.
+| Screen | Button | Action |
+|---|---|---|
+| **Home** | `△` / `▢` / `✕` / `○` | Search songs / Folders / Start show / Quit |
+| **Home** | `L1` / `R1` | Portuguese (`PT-BR`) / English (`EN`) |
+| **Search** | `✕` / `▢` / `△` | Add or remove from queue / Start show / Type search |
+| **Search** | `R1` | Filter: `All` · `CDG` · `MP4` |
+| **Anywhere** | `OPTIONS` | Open Queue (`✕` move song, `△` remove song) |
+| **Countdown** | `✕` / `○` | Start now / Skip turn |
+| **Playing** | `✕` / `○` | Pause & resume / End song |
+| **Playing** | `D-Pad ↑↓` or `Left Stick` | Volume |
+| **Playing** | `L1` / `R1` | Key −1 / +1 semitone |
+| **Playing** | `Right Stick ← →` | Seek −10s / +10s |
+| **Playing** | `Touchpad` or `△` | Show translucent controls bar |
 
-**Phones cannot open the page.** The phone must be on the same Wi-Fi as the PS5, and the app must be open.
+---
 
-**Will it close my game?** No. If a game or app is open, PlayKaraoke shows a message and does nothing.
+## Architecture
 
-## Demo songs
-
-No karaoke files at hand? `tools/make-demo-songs.py` generates six royalty-free demo songs (CDG zips and
-MP4s with made-up lyrics and synthesized music). Needs Python 3 with Pillow and ffmpeg:
-
+```text
+┌─────────────────── PS5 (playkaraoke.elf) ───────────────────┐
+│  Resident Launcher (127.0.0.1:9050) ──► BigApp (app.elf)    │
+│                                           │                 │
+│   ┌──────────────┐   ┌────────────────────┴────┐   ┌─────┐  │
+│   │ Queue & State│◄──┤ FFmpeg 7.1 + CDG + Pitch│──►│SDL2 │──┼─► TV (1080p)
+│   └──────┬───────┘   └─────────────────────────┘   └─────┘  │
+│          │                                                  │
+│   ┌──────┴────────────────┐   ┌──────────────────────────┐  │
+│   │ HTTP Server (:8000)   │   │ Local Library Scanner    │  │
+│   │ libmicrohttpd         │   │ /mnt/usb* + /data/.../   │  │
+│   └──────┬────────────────┘   └──────────────────────────┘  │
+└──────────┼──────────────────────────────────────────────────┘
+           │ Local Wi-Fi (no internet)
+    📱 Guest Phones (embedded mobile web UI)
 ```
-python3 tools/make-demo-songs.py demo-songs
+
+---
+
+## Building from Source
+
+Requires **Docker**. The container uses [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) and [PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) (`v0.41.1`).
+
+```bash
+./tests/run.sh                           # Run host unit tests
+./scripts/ps5.sh release                 # Build public dist/playkaraoke.elf (DEV=0)
+./scripts/ps5.sh build                   # Build development build/playkaraoke.elf (DEV=1)
+PS5_HOST=<PS5-IP> ./scripts/ps5.sh       # Build and send to elfldr
 ```
 
-Copy them to your USB drive and open the app.
+---
 
-## Building
-
-Requires Docker. The build uses the [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) and the
-[PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) libraries (`v0.41.1`).
-
-```
-scripts/ps5.sh release                    # dist/playkaraoke.elf (public build)
-scripts/ps5.sh build                      # development build (build/playkaraoke.elf)
-PS5_HOST=<PS5-IP> scripts/ps5.sh          # build and send to elfldr
-tests/run.sh                              # unit tests (host)
-```
-
-## Credits and licenses
+## Credits & License
 
 PlayKaraoke for PS5 is licensed under **GPL-3.0-or-later** (see [LICENSE](LICENSE)).
 
 | Component | License | Notes |
 |---|---|---|
-| BigApp loader core (`src/launcher/core`) from [ps5-payload-websrv](https://github.com/ps5-payload-dev/websrv) by John Törnblom | GPL-3.0-or-later | Commit `7748df9`; `hbldr.c` changed to use PlayKaraoke's own Media app host |
-| [qrcodegen](https://github.com/nayuki/QR-Code-generator) by Project Nayuki (`vendor/qrcodegen`) | MIT | v1.8.0, unchanged |
-| [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) | GPL-3.0-or-later | Toolchain and runtime |
+| BigApp loader core (`src/launcher/core`) from [ps5-payload-websrv](https://github.com/ps5-payload-dev/websrv) by John Törnblom | GPL-3.0-or-later | Commit `7748df9`; adapted for `PLKR00001` Media tile |
+| [qrcodegen](https://github.com/nayuki/QR-Code-generator) by Project Nayuki (`vendor/qrcodegen`) | MIT | v1.8.0 |
+| [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) | GPL-3.0-or-later | Toolchain & runtime |
 | SDL2, SDL2_ttf, SDL2_image, SDL2_gfx | zlib | Via PacBrew |
-| FFmpeg | LGPL/GPL | Via PacBrew |
+| FFmpeg 7.1 | LGPL/GPL | Via PacBrew |
 | libmicrohttpd | LGPL-2.1 | Via PacBrew |
 | minizip, zlib | zlib | Via PacBrew |
-| [Inter](https://github.com/rsms/inter) and [Montserrat](https://github.com/JulietaUla/Montserrat) fonts | SIL OFL 1.1 | `assets/fonts` |
+| [Inter](https://github.com/rsms/inter) & [Montserrat](https://github.com/JulietaUla/Montserrat) fonts | SIL OFL 1.1 | `assets/fonts` |
 
-The CDG decoder, pitch shifter, queue rotation and file-name parsing are ports of the
-PlayKaraoke Web Player by the same author. The PlayKaraoke name and logo belong to their owner.
-
-## Support
-
-PlayKaraoke is free. More from PlayKaraoke on [YouTube](https://www.youtube.com/@playkaraoke).
+The CDG decoder, pitch shifter, singer rotation, and filename parser are ports of the [PlayKaraoke Web Player](https://github.com/PlayKaraoke/PlayKaraokeWebPlayer) by the same author.

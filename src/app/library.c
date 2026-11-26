@@ -256,9 +256,8 @@ int library_search(library_t *lib, const char *query, library_filter_t filter,
   int nwords = 0;
   for (char *tok = strtok(folded, " \t"); tok && nwords < MAX_WORDS; tok = strtok(NULL, " \t"))
     words[nwords++] = tok;
-  if (nwords == 0) return 0;
 
-  /* Junta todas as que casam, ordena e devolve as primeiras `max`. */
+  /* Junta todas as que casam (se query vazia, lista todas), ordena e devolve as primeiras `max`. */
   match_t *matches = NULL;
   int found = 0, cap = 0;
   pthread_mutex_lock(&lib->lock);

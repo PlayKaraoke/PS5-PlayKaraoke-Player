@@ -8,12 +8,9 @@
  *
  * Rotas (parâmetros na URL):
  *   GET  /                    página do celular
- *   GET  /yt?v=               player do YouTube (aberto no navegador do PS5)
  *   GET  /api/state           estado da fila (o celular consulta a cada 1 s)
- *   GET  /api/search?q=&f=    busca no HD (f: 0 todos, 1 só CDG, 2 só MP4)
- *   GET  /api/search?q=&src=yt  busca no YouTube (online.h)
- *   POST /api/queue?client=&name=&path=[&title=]  pede uma música (title:
- *                                            título do vídeo, se for do YouTube)
+ *   GET  /api/search?q=&f=    busca local (f: 0 todos, 1 só CDG, 2 só MP4)
+ *   POST /api/queue?client=&name=&path=      pede uma música
  *   POST /api/cancel?client=&id=             cancela uma música sua
  *   POST /api/pitch?client=&id=&semitones=   tom de uma música sua
  *   POST /api/finish?client=                 termina a sua música
@@ -35,7 +32,6 @@ typedef struct server_cmd {
   char client[48];
   char name[64];
   char path[1024];
-  char title[256]; /* título do vídeo (YouTube) */
   int song_id;
   int semitones;
 
@@ -52,7 +48,7 @@ typedef struct server server_t;
 /* `wake` é chamado (na thread do servidor) quando chega um comando, para o
  * app acordar o laço principal. */
 server_t *server_start(int port, library_t *lib, const uint8_t *page, size_t page_size,
-                       const uint8_t *yt_page, size_t yt_page_size, void (*wake)(void *ctx), void *wake_ctx);
+                       void (*wake)(void *ctx), void *wake_ctx);
 void server_stop(server_t *s);
 
 void server_set_state(server_t *s, const char *json);

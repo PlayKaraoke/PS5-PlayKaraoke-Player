@@ -14,7 +14,6 @@
 #include <microhttpd.h>
 #include <SDL.h>
 
-#include "online.h"
 #include "songinfo.h"
 
 #define SEARCH_MAX 60
@@ -23,8 +22,8 @@
 struct server {
   struct MHD_Daemon *daemon;
   library_t *lib;
-  const uint8_t *page, *yt_page;
-  size_t page_size, yt_page_size;
+  const uint8_t *page;
+  size_t page_size;
   void (*wake)(void *ctx);
   void *wake_ctx;
 
@@ -96,47 +95,8 @@ static enum MHD_Result handle_state(server_t *s, struct MHD_Connection *conn) {
   return reply(conn, 200, "application/json; charset=utf-8", copy, strlen(copy), MHD_RESPMEM_MUST_FREE);
 }
 
-/* Busca no YouTube (bloqueia esta conexão ~1 s, as outras seguem). */
-static enum MHD_Result handle_online_search(struct MHD_Connection *conn, const char *q) {
-  online_result_t results[ONLINE_MAX_RESULTS];
-  char error[256];
-  int n = q[0] ? online_search(q, results, ONLINE_MAX_RESULTS, error, sizeof error) : 0;
-  if (n < 0) {
-    char body[400] = "{\"error\":";
-    json_append_string(body, sizeof body, error);
-    strncat(body, "}", sizeof body - strlen(body) - 1);
-    return reply_json(conn, 502, body);
-  }
-  size_t size = 128 + (size_t)n * 1200;
-  char *json = malloc(size);
-  if (!json) return MHD_NO;
-  snprintf(json, size, "{\"total\":%d,\"results\":[", n);
-  for (int i = 0; i < n; i++) {
-    songinfo_t info;
-    online_song_info(results[i].title, &info);
-    char path[48];
-    snprintf(path, sizeof path, ONLINE_PREFIX "%s", results[i].video_id);
-    strncat(json, i ? ",{\"path\":" : "{\"path\":", size - strlen(json) - 1);
-    json_append_string(json, size, path);
-    strncat(json, ",\"video\":", size - strlen(json) - 1);
-    json_append_string(json, size, results[i].title);
-    strncat(json, ",\"artist\":", size - strlen(json) - 1);
-    json_append_string(json, size, info.artist);
-    strncat(json, ",\"title\":", size - strlen(json) - 1);
-    json_append_string(json, size, info.title);
-    strncat(json, ",\"code\":", size - strlen(json) - 1);
-    json_append_string(json, size, results[i].channel);
-    strncat(json, ",\"thumb\":", size - strlen(json) - 1);
-    json_append_string(json, size, results[i].thumb);
-    strncat(json, ",\"format\":\"YouTube\"}", size - strlen(json) - 1);
-  }
-  strncat(json, "]}", size - strlen(json) - 1);
-  return reply(conn, 200, "application/json; charset=utf-8", json, strlen(json), MHD_RESPMEM_MUST_FREE);
-}
-
 static enum MHD_Result handle_search(server_t *s, struct MHD_Connection *conn) {
   const char *q = arg(conn, "q");
-  if (strcmp(arg(conn, "src"), "yt") == 0) return handle_online_search(conn, q);
   int f = atoi(arg(conn, "f"));
   if (f < 0 || f > 2) f = 0;
   char (*results)[1024] = malloc(SEARCH_MAX * sizeof *results);
@@ -207,7 +167,6 @@ static enum MHD_Result handle_command(server_t *s, struct MHD_Connection *conn, 
   snprintf(cmd->client, sizeof cmd->client, "%s", arg(conn, "client"));
   snprintf(cmd->name, sizeof cmd->name, "%s", arg(conn, "name"));
   snprintf(cmd->path, sizeof cmd->path, "%s", arg(conn, "path"));
-  snprintf(cmd->title, sizeof cmd->title, "%s", arg(conn, "title"));
   cmd->song_id = atoi(arg(conn, "id"));
   cmd->semitones = atoi(arg(conn, "semitones"));
   if (!cmd->client[0]) {
@@ -275,13 +234,7 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
   int is_get = strcmp(method, "GET") == 0, is_post = strcmp(method, "POST") == 0;
   if (is_get && (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0))
     return reply(conn, 200, "text/html; charset=utf-8", s->page, s->page_size, MHD_RESPMEM_PERSISTENT);
-  if (is_get && strcmp(url, "/yt") == 0)
-    return reply(conn, 200, "text/html; charset=utf-8", s->yt_page, s->yt_page_size, MHD_RESPMEM_PERSISTENT);
   if (is_get && strcmp(url, "/api/state") == 0) return handle_state(s, conn);
-  if (is_post && strcmp(url, "/api/ytlog") == 0) { /* diagnóstico do player do YouTube */
-    printf("[yt] video=%s %s\n", arg(conn, "v"), arg(conn, "e"));
-    return reply_json(conn, 200, "{\"ok\":true}");
-  }
   if (is_get && strcmp(url, "/api/search") == 0) return handle_search(s, conn);
   if (is_post && strcmp(url, "/api/queue") == 0) return handle_command(s, conn, CMD_ADD);
   if (is_post && strcmp(url, "/api/cancel") == 0) return handle_command(s, conn, CMD_CANCEL);
@@ -302,14 +255,12 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
 /* ---------- Ciclo de vida ---------- */
 
 server_t *server_start(int port, library_t *lib, const uint8_t *page, size_t page_size,
-                       const uint8_t *yt_page, size_t yt_page_size, void (*wake)(void *ctx), void *wake_ctx) {
+                       void (*wake)(void *ctx), void *wake_ctx) {
   server_t *s = calloc(1, sizeof *s);
   if (!s) return NULL;
   s->lib = lib;
   s->page = page;
   s->page_size = page_size;
-  s->yt_page = yt_page;
-  s->yt_page_size = yt_page_size;
   s->wake = wake;
   s->wake_ctx = wake_ctx;
   pthread_mutex_init(&s->lock, NULL);

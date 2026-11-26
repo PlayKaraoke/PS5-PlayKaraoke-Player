@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f0c17">
+<meta name="theme-color" content="#0d0d1a">
 <title>PlayKaraoke</title>
 <style>
   :root {
-    --bg: #0f0c17; --panel: #1c1726; --panel-2: #2e2340; --line: #2a2436;
-    --text: #fff; --text-2: #b4adc2; --text-3: #7d7590;
-    --brand: #b000e0; --brand-2: #5a12f0; --danger: #ff5c7a; --ok: #3ddc97;
+    --bg: #0d0d1a; --panel: #141420; --panel-2: #1e1b2e; --field: #10101b; --line: #2a2436;
+    --text: #ecebf2; --text-2: #a7a5b7; --text-3: #77768c; --accent: #c2abff;
+    --brand: #8b5cf6; --brand-2: #ec4899; --grad: linear-gradient(135deg, #8655f6, #e2177b);
+    --danger: #e12f35; --ok: #85ddbd;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
@@ -19,24 +20,24 @@
   .logo svg { display: block; height: 38px; width: auto; }
   .welcome .logo svg { height: 92px; margin: 0 auto; }
   .who { color: var(--text-2); font-size: 14px; background: none; border: 0; padding: 6px 0; }
-  .who b { color: var(--text); }
-  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin: 22px 0 10px; }
-  .card { background: var(--panel); border-radius: 18px; padding: 16px; }
+  .who b { color: var(--accent); }
+  h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin: 22px 0 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
   .hidden { display: none !important; }
-  input[type=search], input[type=text] { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 14px;
-    border: 1px solid var(--line); background: var(--panel); color: var(--text); outline: none; }
-  input:focus { border-color: var(--brand); }
+  input[type=search], input[type=text] { width: 100%; font-size: 17px; padding: 14px 16px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--field); color: var(--text); outline: none; }
+  input:focus { border-color: var(--accent); }
   .row-search { display: flex; gap: 8px; }
   button { font: inherit; color: inherit; cursor: pointer; }
-  .btn { border: 0; border-radius: 14px; padding: 14px 18px; font-weight: 700; font-size: 16px;
-    background: var(--brand); color: #fff; }
-  .btn.ghost { background: var(--panel-2); }
+  .btn { border: 0; border-radius: 12px; padding: 14px 18px; font-weight: 700; font-size: 16px;
+    background: var(--grad); color: #fff; }
+  .btn.ghost { background: var(--panel-2); border: 1px solid var(--line); }
   .btn.danger { background: var(--danger); }
-  .btn:disabled { opacity: .5; }
+  .btn:disabled { opacity: .45; }
   .chips { display: flex; gap: 8px; margin: 12px 0 4px; }
-  .chip { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 7px 14px; font-size: 14px;
+  .chip { border: 1px solid var(--line); background: var(--field); border-radius: 999px; padding: 7px 14px; font-size: 14px;
     color: var(--text-2); }
-  .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .chip.on { background: rgba(139, 92, 246, .2); border-color: rgba(139, 92, 246, .5); color: var(--accent); font-weight: 600; }
   .list { list-style: none; margin: 0; padding: 0; }
   .item { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
   .item:last-child { border-bottom: 0; }
@@ -126,10 +127,6 @@
       <input id="q" type="search" data-i18n-ph="searchPh" enterkeyhint="search" autocomplete="off">
       <button class="btn" data-i18n="searchBtn"></button>
     </form>
-    <div class="chips">
-      <button class="chip on" data-src="usb" data-i18n="srcUsb"></button>
-      <button class="chip" data-src="yt">YouTube</button>
-    </div>
     <div id="filters" class="chips">
       <button class="chip on" data-filter="0" data-i18n="fAll"></button>
       <button class="chip" data-filter="1" data-i18n="fCdg"></button>
@@ -235,8 +232,7 @@ const I18N = {
     offline: 'No connection to the PS5. Retrying…', yourTurnNow: "It's your turn! Singing now",
     key: 'Key', original: 'Original', keyOriginal: 'Original key', finish: 'Finish',
     searchTitle: 'Search songs', searchPh: 'Artist, song or code', searchBtn: 'Search',
-    fAll: 'All', fCdg: 'CDG only', fMp4: 'Video only (MP4)', srcUsb: 'USB drive',
-    ytNote: 'YouTube videos play in the PS5 web browser.', mySongs: 'My songs', rotation: 'Rotation',
+    fAll: 'All', fCdg: 'CDG only', fMp4: 'Video only (MP4)', mySongs: 'My songs', rotation: 'Rotation',
     tabSearch: 'Search', tabMine: 'My turn', confirmAsk: 'Request this song?', cancel: 'Cancel', request: 'Request',
     youAre: 'You are ', change: ' · change', enterName: 'Please enter your name.', searching: 'Searching…',
     nothing: 'Nothing found.', scanning: ' (the PS5 is still reading the drive)',
@@ -254,8 +250,7 @@ const I18N = {
     offline: 'Sem conexão com o PS5. Tentando de novo…', yourTurnNow: 'É a sua vez! Cantando agora',
     key: 'Tom', original: 'Original', keyOriginal: 'Tom original', finish: 'Terminar',
     searchTitle: 'Buscar música', searchPh: 'Artista, música ou código', searchBtn: 'Buscar',
-    fAll: 'Todas', fCdg: 'Só CDG', fMp4: 'Só vídeo (MP4)', srcUsb: 'HD/pen drive',
-    ytNote: 'Os vídeos do YouTube tocam no navegador do PS5.', mySongs: 'Minhas músicas', rotation: 'Rotação',
+    fAll: 'Todas', fCdg: 'Só CDG', fMp4: 'Só vídeo (MP4)', mySongs: 'Minhas músicas', rotation: 'Rotação',
     tabSearch: 'Buscar', tabMine: 'Minha vez', confirmAsk: 'Pedir esta música?', cancel: 'Cancelar', request: 'Pedir',
     youAre: 'Você é ', change: ' · trocar', enterName: 'Digite o seu nome.', searching: 'Buscando…',
     nothing: 'Nada encontrado.', scanning: ' (o PS5 ainda está lendo o HD)',
@@ -294,7 +289,6 @@ document.querySelectorAll('[data-lang]').forEach((b) => {
 
 let state = null;
 let filter = 0;
-let source = 'usb'; // 'usb' (HD/pen drive) ou 'yt' (YouTube)
 let pending = null; // música aguardando confirmação
 
 function toast(text, error) {
@@ -338,6 +332,7 @@ function showApp() {
   $('welcome').classList.add('hidden');
   $('app').classList.remove('hidden');
   showWho();
+  search();
 }
 
 $('name-ok').onclick = () => {
@@ -365,18 +360,7 @@ document.querySelectorAll('[data-filter]').forEach((chip) => {
   chip.onclick = () => {
     filter = Number(chip.dataset.filter);
     document.querySelectorAll('[data-filter]').forEach((c) => c.classList.toggle('on', c === chip));
-    if ($('q').value.trim()) search();
-  };
-});
-
-document.querySelectorAll('[data-src]').forEach((chip) => {
-  chip.onclick = () => {
-    source = chip.dataset.src;
-    document.querySelectorAll('[data-src]').forEach((c) => c.classList.toggle('on', c === chip));
-    $('filters').classList.toggle('hidden', source === 'yt');
-    $('results').innerHTML = '';
-    $('search-msg').textContent = source === 'yt' ? t('ytNote') : '';
-    if ($('q').value.trim()) search();
+    search();
   };
 });
 
@@ -386,11 +370,9 @@ async function search() {
   const q = $('q').value.trim();
   const list = $('results');
   list.innerHTML = '';
-  if (!q) { $('search-msg').textContent = ''; return; }
   $('search-msg').textContent = t('searching');
   try {
-    const params = source === 'yt' ? { q, src: 'yt' } : { q, f: filter };
-    const res = await fetch('/api/search?' + new URLSearchParams(params), { cache: 'no-store' });
+    const res = await fetch('/api/search?' + new URLSearchParams({ q, f: filter }), { cache: 'no-store' });
     const body = await res.json();
     if (body.error) { $('search-msg').textContent = body.error; return; }
     const n = body.results.length;
@@ -411,13 +393,6 @@ async function search() {
       const tag = document.createElement('span');
       tag.className = 'tag';
       tag.textContent = song.format;
-      if (song.thumb) {
-        const img = document.createElement('img');
-        img.className = 'thumb';
-        img.src = song.thumb;
-        img.alt = '';
-        li.append(img);
-      }
       li.append(info, tag);
       li.onclick = () => confirmSong(song);
       list.append(li);
@@ -440,9 +415,7 @@ $('sheet-ok').onclick = async () => {
   $('sheet').classList.add('hidden');
   if (!song) return;
   try {
-    const req = { name: myName, path: song.path };
-    if (song.video) req.title = song.video; // YouTube: título do vídeo
-    await api('POST', '/api/queue', req);
+    await api('POST', '/api/queue', { name: myName, path: song.path });
     toast(t('requested') + song.title);
     poll();
   } catch (e) {

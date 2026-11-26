@@ -68,14 +68,16 @@ void queue_view_draw(ui_t *ui, queue_t *q, queue_view_t *v, int playing_id) {
   fix_selection(v, n, 1);
 
   ui_clear(ui, UI_BG);
-  ui_rect(ui, 0, 0, UI_W, 6, UI_BRAND);
-  ui_text(ui, FONT_HEADING, TR("Queue", "Fila"), 80, 56, UI_TEXT, ALIGN_LEFT, 0);
+  ui_gradient_rect(ui, 0, 0, UI_W, 5);
+  ui_text(ui, FONT_HEADING, TR("Queue", "Fila"), 80, 52, UI_TEXT, ALIGN_LEFT, 0);
   int total = queue_total_songs(q);
   char status[64];
-  snprintf(status, sizeof status, total == 1 ? TR("1 song", "1 música") : TR("%d songs", "%d músicas"), total);
-  ui_text(ui, FONT_BODY, status, UI_W - 80, 62, UI_TEXT_2, ALIGN_RIGHT, 0);
-  ui_text(ui, FONT_SMALL, TR("Rotation order: each singer sings one song per round.", "Ordem da rotação: cada cantor canta uma música por rodada."), 80, 124, UI_TEXT_3,
+  snprintf(status, sizeof status, TR("%d singers · %d songs", "%d cantores · %d músicas"), q->count, total);
+  ui_badge(ui, UI_W - 80, 58, status, total ? UI_PANEL_HI : UI_PANEL, total ? UI_ACCENT : UI_TEXT_2, 1);
+  ui_text(ui, FONT_SMALL, TR("Rotation order: each singer sings one song per round.", "Ordem da rotação: cada cantor canta uma música por rodada."), 80, 118, UI_TEXT_2,
           ALIGN_LEFT, 0);
+
+  ui_card(ui, 64, LIST_Y - 16, UI_W - 128, ROWS * ROW_H + 26, 20);
 
   if (total == 0)
     ui_text(ui, FONT_BODY, TR("The queue is empty.", "A fila está vazia."), UI_W / 2, 480, UI_TEXT_3, ALIGN_CENTER, 0);
@@ -93,31 +95,33 @@ void queue_view_draw(ui_t *ui, queue_t *q, queue_view_t *v, int playing_id) {
       char head[128];
       if (s->count == 0) snprintf(head, sizeof head, TR("%s  \xC2\xB7  no songs (will be skipped)", "%s  \xC2\xB7  sem música (será pulado)"), s->name);
       else snprintf(head, sizeof head, TR("%s  \xC2\xB7  %d song%s", "%s  \xC2\xB7  %d música%s"), s->name, s->count, s->count == 1 ? "" : "s");
-      ui_text(ui, FONT_BODY_B, head, 80, y + 12, s->count ? UI_BRAND : UI_TEXT_3, ALIGN_LEFT, UI_W - 200);
+      ui_text(ui, FONT_BODY_B, head, 96, y + 12, s->count ? UI_ACCENT : UI_TEXT_3, ALIGN_LEFT, UI_W - 220);
       continue;
     }
     qsong_t *song = &s->songs[g_rows[i].song];
     if (i == v->sel && v->grabbed) {
-      ui_box(ui, 64, y, UI_W - 128, ROW_H - 6, 16, UI_BRAND_2, 255);
+      ui_gradient_box(ui, 80, y, UI_W - 160, ROW_H - 6, 12);
     } else if (i == v->sel) {
-      ui_box(ui, 64, y, UI_W - 128, ROW_H - 6, 16, UI_PANEL_HI, 255);
-      ui_rect(ui, 64, y + 13, 6, ROW_H - 32, UI_BRAND);
+      ui_box(ui, 80, y, UI_W - 160, ROW_H - 6, 12, UI_PANEL_HI, 255);
+      ui_gradient_rect(ui, 80, y + 10, 5, ROW_H - 26);
     }
-    char num[8], line[600];
-    snprintf(num, sizeof num, "%d", g_rows[i].song + 1);
-    ui_text(ui, FONT_SMALL, num, 130, y + 12, UI_TEXT_3, ALIGN_RIGHT, 0);
+    char num[16], line[600];
+    if (i == v->sel && v->grabbed) snprintf(num, sizeof num, "\xE2\x86\x95 %d", g_rows[i].song + 1);
+    else snprintf(num, sizeof num, "#%d", g_rows[i].song + 1);
+    ui_text(ui, FONT_SMALL, num, 146, y + 12, (i == v->sel && v->grabbed) ? 0xFFFFFF : UI_TEXT_3, ALIGN_RIGHT, 0);
     songinfo_display(&song->info, line, sizeof line);
-    int right = UI_W - 100;
-    const char *tag = song->id == playing_id ? TR("PLAYING", "TOCANDO")
-                      : (g_rows[i].singer == q->current && g_rows[i].song == 0 && !playing_id) ? TR("NEXT", "PRÓXIMA")
-                                                                                              : NULL;
-    if (tag) right -= ui_text(ui, FONT_SMALL, tag, right, y + 12, UI_BRAND, ALIGN_RIGHT, 0) + 24;
+    int right = UI_W - 104;
+    if (song->id == playing_id) {
+      right -= ui_badge(ui, right, y + 9, TR("NOW PLAYING", "TOCANDO"), UI_BRAND, 0xFFFFFF, 1) + 16;
+    } else if (g_rows[i].singer == q->current && g_rows[i].song == 0 && !playing_id) {
+      right -= ui_badge(ui, right, y + 9, TR("NEXT", "PRÓXIMA"), UI_FIELD, UI_ACCENT, 1) + 16;
+    }
     if (song->semitones) {
       char st[16];
-      snprintf(st, sizeof st, TR("key %+d", "tom %+d"), song->semitones);
-      right -= ui_text(ui, FONT_SMALL, st, right, y + 12, UI_TEXT_2, ALIGN_RIGHT, 0) + 24;
+      snprintf(st, sizeof st, TR("Key %+d", "Tom %+d"), song->semitones);
+      right -= ui_badge(ui, right, y + 9, st, UI_FIELD, UI_BRAND_2, 1) + 16;
     }
-    ui_text(ui, FONT_BODY, line, 160, y + 6, UI_TEXT, ALIGN_LEFT, right - 160);
+    ui_text(ui, (i == v->sel) ? FONT_BODY_B : FONT_BODY, line, 168, y + 6, (i == v->sel && v->grabbed) ? 0xFFFFFF : UI_TEXT, ALIGN_LEFT, right - 168);
   }
 
   if (queue_view_has_toast(v) && (Sint32)(v->toast_until - SDL_GetTicks()) > 0) {
